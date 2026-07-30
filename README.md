@@ -1,6 +1,6 @@
-# Windows VPS Web Installer
+# Instaler Haf.id Store
 
-Web installer untuk install ulang VPS ke Windows langsung dari browser.
+Web installer Haf.id Store untuk install ulang VPS ke Windows langsung dari browser.
 Masukkan IP VPS, password root/SSH, link ISO Windows, password RDP baru, dan
 port RDP. Aplikasi akan SSH ke VPS target, menjalankan `reinstall.sh`, lalu
 menampilkan progress install secara live.
@@ -37,6 +37,23 @@ Buka:
 
 ```text
 http://localhost:8081
+```
+
+## SEO Google
+
+Aplikasi sudah menyiapkan title, description, Open Graph, manifest,
+`/robots.txt`, dan `/sitemap.xml`.
+
+Saat deploy di aaPanel, isi domain publik agar sitemap memakai URL yang benar:
+
+```bash
+PUBLIC_SITE_URL="https://domain-kamu.com" npm start
+```
+
+Di aaPanel Node.js Project, masukkan environment variable:
+
+```text
+PUBLIC_SITE_URL=https://domain-kamu.com
 ```
 
 Jika memakai VS Code, buka file `DEPLOY-VSCODE.md` atau jalankan task

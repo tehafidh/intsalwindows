@@ -1,0 +1,18 @@
+{
+  "name": "Instaler Haf.id Store",
+  "short_name": "Instaler Haf.id",
+  "description": "Web installer Windows VPS otomatis dengan SSH runner, custom RDP, progress live, dan preset ISO Microsoft.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071226",
+  "theme_color": "#071226",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

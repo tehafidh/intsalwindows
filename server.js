@@ -17,9 +17,42 @@ const defaultReinstallBase =
 const upstreamCnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
 const rawBase = process.env.REINSTALL_BASE_URL || defaultReinstallBase;
 const cnBase = process.env.REINSTALL_CN_BASE_URL || upstreamCnBase;
+const siteName = "Instaler Haf.id Store";
+const publicSiteUrl = String(process.env.PUBLIC_SITE_URL || "").replace(/\/+$/, "");
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(publicDir));
+
+function requestOrigin(req) {
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${port}`;
+    return publicSiteUrl || `${protocol}://${host}`;
+}
+
+app.get("/robots.txt", (req, res) => {
+    const origin = requestOrigin(req);
+    res.type("text/plain").send([
+        "User-agent: *",
+        "Allow: /",
+        `Sitemap: ${origin}/sitemap.xml`,
+        "",
+    ].join("\n"));
+});
+
+app.get("/sitemap.xml", (req, res) => {
+    const origin = requestOrigin(req);
+    const updated = new Date().toISOString();
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${origin}/</loc>
+    <lastmod>${updated}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+`);
+});
 
 function bashQuote(value) {
     return `'${String(value).replaceAll("'", "'\"'\"'")}'`;
@@ -489,5 +522,5 @@ server.on("upgrade", (request, socket, head) => {
 
 const port = normalizePort(process.env.PORT, 8081);
 server.listen(port, () => {
-    console.log(`Windows VPS Web Installer jalan di http://localhost:${port}`);
+    console.log(`${siteName} jalan di http://localhost:${port}`);
 });

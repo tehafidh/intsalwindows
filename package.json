@@ -1,7 +1,7 @@
 {
-    "name": "windows-vps-web-installer",
+    "name": "instaler-hafid-store",
     "version": "1.0.0",
-    "description": "Web installer Windows VPS dengan SSH runner, custom password RDP, port RDP, dan progress log.",
+    "description": "Instaler Haf.id Store untuk install Windows VPS dengan SSH runner, custom RDP, preset ISO Microsoft, dan progress live.",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",

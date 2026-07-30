@@ -32,6 +32,7 @@ npm install --production
 - Startup file: `server.js`
 - Port: `8081`
 - Start command: `npm start`
+- Environment variable: `PUBLIC_SITE_URL=https://domain-kamu.com`
 
 Reverse proxy domain ke:
 
@@ -40,6 +41,11 @@ http://127.0.0.1:8081
 ```
 
 Aktifkan WebSocket di reverse proxy.
+
+## SEO
+
+App menyediakan `/robots.txt` dan `/sitemap.xml`. Isi `PUBLIC_SITE_URL` dengan
+domain publik agar Google melihat sitemap dengan URL yang benar.
 
 ## Catatan penting
 

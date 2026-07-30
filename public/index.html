@@ -24,13 +24,13 @@
         <div class="status-panel" aria-label="Status provider">
           <div>
             <span class="status-dot ok"></span>
-            <strong>Tencent Cloud</strong>
-            <p>Cocok untuk Windows. Pastikan security group membuka SSH, web log, dan RDP.</p>
+            <strong>Universal KVM</strong>
+            <p>Satu alur untuk DigitalOcean, Tencent Cloud, dan VPS KVM sejenis.</p>
           </div>
           <div>
             <span class="status-dot warn"></span>
-            <strong>DigitalOcean</strong>
-            <p>Windows tidak didukung resmi. Wajib siap akses recovery lewat console.</p>
+            <strong>Catatan support</strong>
+            <p>Provider tetap beda di firewall, console recovery, dan dukungan Windows resmi.</p>
           </div>
         </div>
       </section>
@@ -83,6 +83,7 @@
             <label>
               Provider
               <select id="provider" name="provider">
+                <option value="universal">Universal KVM / DO / Tencent</option>
                 <option value="tencent">Tencent Cloud</option>
                 <option value="digitalocean">DigitalOcean</option>
                 <option value="other">Provider lain / VPS biasa</option>

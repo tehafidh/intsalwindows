@@ -6,6 +6,7 @@ set "LogFile=%SystemDrive%\windows-postinstall-rds-policy.log"
 set "PolicyInf=%SystemDrive%\windows-postinstall-policy.inf"
 set "PolicyDb=%SystemRoot%\security\Database\reinstall-postinstall.sdb"
 set "PsScript=%SystemDrive%\windows-install-rdsh.ps1"
+set "TaskbarScript=%SystemDrive%\windows-taskbar-cleanup.bat"
 
 echo [%date% %time%] Start postinstall RDS and security policy > "%LogFile%"
 
@@ -29,6 +30,32 @@ net accounts /minpwlen:1 /maxpwage:999 /minpwage:0 /uniquepw:0 >> "%LogFile%" 2>
 
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f >> "%LogFile%" 2>&1
 netsh advfirewall firewall set rule group="remote desktop" new enable=Yes >> "%LogFile%" 2>&1
+
+rem Hide volume and battery/power tray icons for every user via machine policy.
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAVolume /t REG_DWORD /d 1 /f >> "%LogFile%" 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAPower /t REG_DWORD /d 1 /f >> "%LogFile%" 2>&1
+
+rem Remove default profile taskbar pins when the folder already exists.
+if exist "%SystemDrive%\Users\Default\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar" (
+    del /f /q "%SystemDrive%\Users\Default\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\*" >> "%LogFile%" 2>&1
+)
+
+rem Apply taskbar cleanup once when the first administrator desktop session is created.
+(
+    echo @echo off
+    echo setlocal
+    echo set "LogFile=%%SystemDrive%%\windows-taskbar-cleanup.log"
+    echo echo [%%date%% %%time%%] Start taskbar cleanup ^> "%%LogFile%%"
+    echo reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAVolume /t REG_DWORD /d 1 /f ^>^> "%%LogFile%%" 2^>^&1
+    echo reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAPower /t REG_DWORD /d 1 /f ^>^> "%%LogFile%%" 2^>^&1
+    echo reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Taskband" /f ^>^> "%%LogFile%%" 2^>^&1
+    echo if exist "%%APPDATA%%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar" del /f /q "%%APPDATA%%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\*" ^>^> "%%LogFile%%" 2^>^&1
+    echo taskkill /f /im explorer.exe ^>^> "%%LogFile%%" 2^>^&1
+    echo start explorer.exe
+    echo echo [%%date%% %%time%%] Done taskbar cleanup ^>^> "%%LogFile%%"
+    echo del "%%~f0"
+) > "%TaskbarScript%"
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v ReinstallTaskbarCleanup /t REG_SZ /d "cmd.exe /c %TaskbarScript%" /f >> "%LogFile%" 2>&1
 
 (
     echo $ErrorActionPreference = 'Continue'

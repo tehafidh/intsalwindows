@@ -43,6 +43,9 @@ function isUrl(value) {
 }
 
 function providerNotice() {
+  if (provider.value === "universal") {
+    return "Mode Universal KVM: logic install sama untuk DigitalOcean, Tencent, dan VPS KVM sejenis.";
+  }
   if (provider.value === "digitalocean") {
     return "DigitalOcean tidak support Windows resmi. Pastikan console recovery tersedia.";
   }
@@ -243,7 +246,7 @@ document.querySelector("#load-example").addEventListener("click", () => {
   host.value = "1.2.3.4";
   sshUsername.value = "root";
   sshLoginPort.value = "22";
-  provider.value = "tencent";
+  provider.value = "universal";
   mode.value = "iso";
   imageName.value = "Windows Server 2012 R2 SERVERDATACENTER";
   imageUrl.value =

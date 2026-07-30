@@ -23,6 +23,7 @@ menampilkan progress install secara live.
 - Monitor otomatis sampai port RDP terbuka.
 - Otomatis install Remote Desktop Session Host di Windows Server.
 - Otomatis set policy: maximum password age 999 hari, minimum password length 1, complexity disabled, do not require Ctrl+Alt+Del enabled, dan machine account password age 999 hari.
+- Otomatis membersihkan pinned taskbar dan menyembunyikan icon volume serta battery/power.
 
 ## Cara Menjalankan Di Komputer Lokal
 
@@ -98,6 +99,11 @@ npm start
 ```
 
 ## Catatan Provider
+
+Mode installer langsung memakai alur **Universal KVM**, jadi DigitalOcean,
+Tencent Cloud, dan provider KVM lain bisa memakai form dan backend yang sama.
+Yang berbeda hanya firewall/security group, console recovery, dan dukungan resmi
+Windows dari provider.
 
 Tencent Cloud cocok untuk Windows dan custom image. Kalau ingin produksi yang
 lebih rapi, jalur paling stabil adalah membuat custom image Windows, upload ke

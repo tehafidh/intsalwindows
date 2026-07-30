@@ -962,6 +962,7 @@ function addLog(text) {
 }
 
 function payload() {
+  const username = rdpUsername.value.trim() || "administrator";
   return {
     host: host.value.trim(),
     sshUsername: sshUsername.value.trim(),
@@ -972,6 +973,7 @@ function payload() {
     windowsPreset: windowsPreset.value,
     imageName: imageName.value.trim(),
     imageUrl: imageUrl.value.trim(),
+    username,
     rdpUsername: rdpUsername.value.trim(),
     rdpPassword: rdpPassword.value,
     rdpPort: Number(rdpPort.value) || 3389,
@@ -1001,13 +1003,15 @@ function connectLogs(jobId) {
     try {
       const data = JSON.parse(event.data);
       if (data.type === "snapshot") {
-        setStage(data.job.status);
-        progressUrlValue = data.job.progressUrl || progressUrlValue;
-        rdpTargetValue = data.job.rdpTarget || rdpTargetValue;
-        updateGatedOutputs(data.job.status);
+        const snapshotStatus = data.job?.status || data.status || currentStatus;
+        setStage(snapshotStatus);
+        progressUrlValue = data.job?.progressUrl || data.progressUrl || progressUrlValue;
+        rdpTargetValue = data.job?.rdpTarget || data.rdpTarget || rdpTargetValue;
+        updateGatedOutputs(snapshotStatus);
 
-        if (Array.isArray(data.job.logs)) {
-          data.job.logs.forEach((logItem) => {
+        const snapshotLogs = data.job?.logs || data.logs || [];
+        if (Array.isArray(snapshotLogs)) {
+          snapshotLogs.forEach((logItem) => {
             const msg = typeof logItem === "object" ? logItem.message : logItem;
             addLog(msg);
           });
@@ -1023,6 +1027,7 @@ function connectLogs(jobId) {
       }
     } catch (err) {
       console.warn("WebSocket parse error:", err);
+      addLog(`[ws] Gagal membaca pesan WebSocket: ${err.message}`);
     }
   };
 
@@ -1193,13 +1198,23 @@ form.addEventListener("submit", async (event) => {
   addLog("Mengirim job install ke backend...");
   setStage("queued");
 
-  const response = await fetch("/api/install", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload()),
-  });
+  let response;
+  let result;
+  try {
+    response = await fetch("/api/install", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload()),
+    });
+    const text = await response.text();
+    result = text ? JSON.parse(text) : {};
+  } catch (err) {
+    addLog(`[backend] Request install gagal: ${err.message}`);
+    setStage("failed");
+    startButton.disabled = false;
+    return;
+  }
 
-  const result = await response.json();
   if (!response.ok) {
     addLog((result.problems || [result.error || "Request gagal."]).join(" "));
     setStage("failed");
@@ -1208,6 +1223,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   activeJobId = result.jobId;
+  addLog(`[backend] Job diterima: ${result.jobId}`);
   progressUrlValue = result.progressUrl;
   rdpTargetValue = result.rdpTarget;
   updateGatedOutputs(currentStatus);

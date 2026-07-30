@@ -524,7 +524,13 @@ server.on("upgrade", (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
         job.clients.add(ws);
         ws.send(JSON.stringify({ type: "status", status: job.status }));
-        ws.send(JSON.stringify({ type: "snapshot", logs: job.logs }));
+        ws.send(JSON.stringify({
+            type: "snapshot",
+            status: job.status,
+            progressUrl: `http://${job.config.host}:${job.config.webPort}/`,
+            rdpTarget: `${job.config.host}:${job.config.rdpPort}`,
+            logs: job.logs,
+        }));
         ws.on("close", () => job.clients.delete(ws));
     });
 });

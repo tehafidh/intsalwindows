@@ -81,6 +81,14 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v ReinstallTas
     echo } else {
     echo     "[$(Get-Date)] Install-WindowsFeature/Add-WindowsFeature not available" ^| Out-File -FilePath $log -Append -Encoding ASCII
     echo }
+    echo try {
+    echo     $rdpGroupName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-555'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
+    echo     $everyoneName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-1-0'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
+    echo     "[$(Get-Date)] Add $everyoneName to $rdpGroupName" ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo     net localgroup "$rdpGroupName" "$everyoneName" /add ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo } catch {
+    echo     "[$(Get-Date)] Failed to add Everyone to Remote Desktop Users: $($_.Exception.Message)" ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo }
 ) > "%PsScript%"
 
 powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PsScript%" >> "%LogFile%" 2>&1

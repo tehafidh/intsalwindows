@@ -198,7 +198,7 @@ function applyStatusProgress(status) {
     "rdp-ready": [100, "Windows Ready", "Ready."],
     failed: [currentProgress, "Gagal", "Cek log."],
     "remote-error": [currentProgress, "Error", "Cek console."],
-    timeout: [currentProgress, "Timeout", "Belum ready."],
+    timeout: [currentProgress, "Gagal", "RDP belum ready 15 menit."],
     finished: [currentProgress, "Selesai", "Menunggu status."],
   };
   const progress = progressByStatus[status];
@@ -390,7 +390,7 @@ function setStage(status) {
     "windows-setup": "Waiting RDP Ready",
     "rdp-ready": "Windows Ready",
     "remote-error": "Error",
-    timeout: "Timeout",
+    timeout: "Gagal",
     failed: "Gagal",
     finished: "Menunggu status",
   };
@@ -427,7 +427,7 @@ function setStatus(status) {
   } else if (status === "remote-error") {
     jobTitle.textContent = "Installer remote error";
   } else if (status === "timeout") {
-    jobTitle.textContent = "Timeout";
+    jobTitle.textContent = "Gagal";
   } else if (status === "failed") {
     jobTitle.textContent = "Gagal";
   } else {

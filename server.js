@@ -165,7 +165,7 @@ function isRemoteInstallError(body) {
 
 async function monitorAfterReboot(job, config) {
     const startedAt = Date.now();
-    const timeoutMs = 90 * 60 * 1000;
+    const timeoutMs = 15 * 60 * 1000;
     let lastMessage = "";
     let lastHeartbeatAt = 0;
 
@@ -188,8 +188,8 @@ async function monitorAfterReboot(job, config) {
                 setStatus(job, "windows-setup");
                 message = "Installer awal selesai. Menunggu Windows boot dan membuka RDP.";
             } else if (isRemoteInstallError(progress.body)) {
-                setStatus(job, "remote-error");
-                message = `Web progress aktif, tetapi terdeteksi error. Buka http://${config.host}:${config.webPort}/`;
+                setStatus(job, "windows-setup");
+                message = "Web progress memberi peringatan. Tetap lanjut monitor.";
             } else {
                 setStatus(job, "remote-progress");
                 message = `Web progress masih aktif: http://${config.host}:${config.webPort}/`;
@@ -210,7 +210,7 @@ async function monitorAfterReboot(job, config) {
     }
 
     setStatus(job, "timeout");
-    appendLog(job, "Monitor timeout setelah 90 menit. Cek console/VNC provider atau firewall RDP.");
+    appendLog(job, "Gagal: RDP belum ready setelah 15 menit. Cek console/VNC provider atau firewall RDP.");
 }
 
 function validateRequest(body) {

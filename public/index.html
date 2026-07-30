@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Windows VPS Web Installer</title>
+    <meta
+      name="description"
+      content="Install Windows VPS langsung dari web dengan SSH, custom password RDP, port RDP, dan progress log."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Direct Windows VPS installer</p>
+          <h1>Masukkan IP VPS, klik install, pantau progress dari web.</h1>
+          <p class="lead">
+            Backend lokal akan SSH ke VPS, menjalankan script reinstall, lalu
+            menampilkan log live. Password tidak disimpan ke file.
+          </p>
+        </div>
+        <div class="status-panel" aria-label="Status provider">
+          <div>
+            <span class="status-dot ok"></span>
+            <strong>Tencent Cloud</strong>
+            <p>Cocok untuk Windows. Pastikan security group membuka SSH, web log, dan RDP.</p>
+          </div>
+          <div>
+            <span class="status-dot warn"></span>
+            <strong>DigitalOcean</strong>
+            <p>Windows tidak didukung resmi. Wajib siap akses recovery lewat console.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form id="installer-form" class="panel" autocomplete="off">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Target VPS</p>
+              <h2>Akses SSH</h2>
+            </div>
+            <button class="ghost" type="button" id="load-example">Isi contoh</button>
+          </div>
+
+          <div class="grid three">
+            <label>
+              IP / domain VPS
+              <input id="host" name="host" placeholder="1.2.3.4" />
+            </label>
+
+            <label>
+              Username SSH
+              <input id="ssh-username" name="sshUsername" value="root" />
+            </label>
+
+            <label>
+              Port SSH login
+              <input id="ssh-login-port" name="sshLoginPort" type="number" min="1" max="65535" value="22" />
+            </label>
+          </div>
+
+          <label>
+            Password root / SSH
+            <span class="password-line">
+              <input id="ssh-password" name="sshPassword" type="password" placeholder="Password root VPS saat ini" />
+              <button class="icon-button" type="button" data-toggle="#ssh-password">View</button>
+            </span>
+          </label>
+
+          <div class="panel-divider"></div>
+
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Windows</p>
+              <h2>Install target</h2>
+            </div>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Provider
+              <select id="provider" name="provider">
+                <option value="tencent">Tencent Cloud</option>
+                <option value="digitalocean">DigitalOcean</option>
+                <option value="other">Provider lain / VPS biasa</option>
+              </select>
+            </label>
+
+            <label>
+              Mode install
+              <select id="mode" name="mode">
+                <option value="iso">Windows ISO langsung</option>
+                <option value="dd">DD image Windows RAW/VHD</option>
+              </select>
+            </label>
+          </div>
+
+          <label id="image-name-row">
+            Nama image Windows
+            <input
+              id="image-name"
+              name="imageName"
+              value="Windows Server 2012 R2 Datacenter Evaluation"
+              placeholder="Windows Server 2022 Datacenter Evaluation"
+            />
+          </label>
+
+          <label>
+            Link ISO / image
+            <input
+              id="image-url"
+              name="imageUrl"
+              inputmode="url"
+              value="https://download.microsoft.com/download/6/2/A/62A76ABB-9990-4EFC-A4FE-C7D698DAEB96/9600.17050.WINBLUE_REFRESH.140317-1640_X64FRE_SERVER_EVAL_EN-US-IR3_SSS_X64FREE_EN-US_DV9.ISO"
+              placeholder="https://example.com/windows.iso"
+            />
+          </label>
+
+          <div class="grid two">
+            <label>
+              Username RDP
+              <input id="rdp-username" name="rdpUsername" value="administrator" />
+            </label>
+
+            <label>
+              Password RDP baru
+              <span class="password-line">
+                <input id="rdp-password" name="rdpPassword" type="password" placeholder="Minimal 8 karakter" />
+                <button class="icon-button" type="button" data-toggle="#rdp-password">View</button>
+              </span>
+            </label>
+          </div>
+
+          <div class="grid three">
+            <label>
+              Port RDP
+              <input id="rdp-port" name="rdpPort" type="number" min="1" max="65535" value="3389" />
+            </label>
+
+            <label>
+              Port SSH log
+              <input id="install-ssh-port" name="installSshPort" type="number" min="1" max="65535" value="22" />
+            </label>
+
+            <label>
+              Port web progress
+              <input id="web-port" name="webPort" type="number" min="1" max="65535" value="80" />
+            </label>
+          </div>
+
+          <div class="toggles">
+            <label class="check">
+              <input id="allow-ping" type="checkbox" checked />
+              <span>Allow ping di Windows Firewall</span>
+            </label>
+            <label class="check">
+              <input id="cn-mirror" type="checkbox" />
+              <span>Pakai mirror CN untuk download script</span>
+            </label>
+          </div>
+
+          <div id="validation" class="validation" role="status"></div>
+
+          <button class="danger" type="submit" id="start-install">Mulai install sekarang</button>
+        </form>
+
+        <aside class="panel output-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Progress</p>
+              <h2 id="job-title">Belum mulai</h2>
+            </div>
+            <span id="job-status" class="pill">idle</span>
+          </div>
+
+          <div class="result-grid">
+            <a id="progress-url" class="result-tile disabled" href="#" target="_blank" rel="noreferrer">
+              <span>Web progress VPS</span>
+              <strong>-</strong>
+            </a>
+            <div class="result-tile">
+              <span>Target RDP</span>
+              <strong id="rdp-target">-</strong>
+            </div>
+          </div>
+
+          <div class="code-block log-block">
+            <div class="code-title">Live log</div>
+            <pre id="live-log">Menunggu install dimulai...</pre>
+          </div>
+
+          <div class="manual-progress">
+            <p class="eyebrow">Cek progress manual</p>
+            <div class="grid two tight">
+              <input id="manual-progress-ip" placeholder="IP VPS" />
+              <input id="manual-progress-port" type="number" min="1" max="65535" value="80" />
+            </div>
+            <button class="ghost full" type="button" id="open-progress">Buka progress IP</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="notes">
+        <article>
+          <h2>Alur kerja</h2>
+          <p>
+            Saat tombol install ditekan, server lokal konek SSH ke VPS,
+            download <code>reinstall.sh</code>, menjalankan mode Windows ISO/DD,
+            lalu stream output SSH ke panel log.
+          </p>
+        </article>
+        <article>
+          <h2>Wajib diperhatikan</h2>
+          <p>
+            Proses ini menghapus seluruh disk VPS. Jangan jalankan di server
+            yang masih menyimpan data penting, dan buka firewall/security group
+            untuk port SSH, web progress, dan RDP.
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

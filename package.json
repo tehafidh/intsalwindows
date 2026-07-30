@@ -1,0 +1,24 @@
+{
+    "name": "windows-vps-web-installer",
+    "version": "1.0.0",
+    "description": "Web installer Windows VPS dengan SSH runner, custom password RDP, port RDP, dan progress log.",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "check": "node --check server.js && node --check public/app.js"
+    },
+    "keywords": [
+        "vps",
+        "windows",
+        "rdp",
+        "reinstall"
+    ],
+    "author": "",
+    "license": "GPL-3.0-or-later",
+    "dependencies": {
+        "express": "^4.19.2",
+        "ssh2": "^1.16.0",
+        "ws": "^8.18.0"
+    }
+}

@@ -19,6 +19,8 @@ menampilkan progress install secara live.
 - Link progress bawaan script, contoh `http://IP-VPS:80/`.
 - Auto reboot setelah setup reinstall sukses.
 - Monitor otomatis sampai port RDP terbuka.
+- Otomatis install Remote Desktop Session Host di Windows Server.
+- Otomatis set policy: maximum password age 999 hari, minimum password length 1, complexity disabled, do not require Ctrl+Alt+Del enabled, dan machine account password age 999 hari.
 
 ## Menjalankan
 

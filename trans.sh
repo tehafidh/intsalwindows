@@ -3441,6 +3441,10 @@ modify_windows() {
         bats="$bats windows-set-netconf-$ethx.bat"
     done
 
+    download $confhome/windows-postinstall-rds-policy.bat $os_dir/windows-postinstall-rds-policy.bat
+    unix2dos $os_dir/windows-postinstall-rds-policy.bat
+    bats="$bats windows-postinstall-rds-policy.bat"
+
     # 5. 设置用户密码永不过期（仅限 iso 安装）
     #    Azure 的 Windows 实例，初始用户的密码也是永不过期的
     #    管理员账号默认不会过期

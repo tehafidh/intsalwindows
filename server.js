@@ -151,10 +151,12 @@ async function monitorAfterReboot(job, config) {
     const startedAt = Date.now();
     const timeoutMs = 90 * 60 * 1000;
     let lastMessage = "";
+    let lastHeartbeatAt = 0;
 
     appendLog(job, "Monitor aktif: mengecek web progress dan port RDP sampai Windows siap.");
 
     while (Date.now() - startedAt < timeoutMs) {
+        const elapsedMinutes = Math.max(1, Math.floor((Date.now() - startedAt) / 60000));
         const rdpReady = await canConnectTcp(config.host, config.rdpPort);
         if (rdpReady) {
             setStatus(job, "rdp-ready");
@@ -181,9 +183,11 @@ async function monitorAfterReboot(job, config) {
             message = "Web progress tidak bisa diakses. Ini normal saat VPS reboot atau Windows Setup berjalan.";
         }
 
-        if (message !== lastMessage) {
-            appendLog(job, message);
+        const shouldHeartbeat = Date.now() - lastHeartbeatAt >= 60 * 1000;
+        if (message !== lastMessage || shouldHeartbeat) {
+            appendLog(job, `${message} Menunggu RDP ${config.host}:${config.rdpPort}. Durasi monitor: ${elapsedMinutes} menit.`);
             lastMessage = message;
+            lastHeartbeatAt = Date.now();
         }
 
         await sleep(15000);

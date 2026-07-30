@@ -133,6 +133,16 @@ function setStatus(status) {
     jobTitle.textContent = "Menghubungkan SSH";
   } else if (status === "rebooting") {
     jobTitle.textContent = "VPS reboot / lanjut install";
+  } else if (status === "remote-progress") {
+    jobTitle.textContent = "Installer sedang diproses";
+  } else if (status === "windows-setup") {
+    jobTitle.textContent = "Menunggu Windows siap";
+  } else if (status === "rdp-ready") {
+    jobTitle.textContent = "RDP sudah siap";
+  } else if (status === "remote-error") {
+    jobTitle.textContent = "Installer remote error";
+  } else if (status === "timeout") {
+    jobTitle.textContent = "Monitor timeout";
   } else if (status === "failed") {
     jobTitle.textContent = "Install gagal";
   } else {

@@ -20,6 +20,7 @@ menampilkan progress install secara live.
 - Link progress bawaan script, contoh `http://IP-VPS:80/`.
 - Tombol buka progress manual berdasarkan IP dan port.
 - Auto reboot setelah setup reinstall sukses.
+- Monitor otomatis sampai port RDP terbuka.
 
 ## Cara Menjalankan Di Komputer Lokal
 

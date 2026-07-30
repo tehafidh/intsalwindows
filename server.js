@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const http = require("http");
+const net = require("net");
 const path = require("path");
 const express = require("express");
 const { Client } = require("ssh2");
@@ -96,6 +97,100 @@ function setStatus(job, status) {
             client.send(payload);
         }
     }
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function canConnectTcp(host, port, timeoutMs = 4000) {
+    return new Promise((resolve) => {
+        const socket = net.createConnection({ host, port });
+        const finish = (result) => {
+            socket.removeAllListeners();
+            socket.destroy();
+            resolve(result);
+        };
+        socket.setTimeout(timeoutMs);
+        socket.once("connect", () => finish(true));
+        socket.once("timeout", () => finish(false));
+        socket.once("error", () => finish(false));
+    });
+}
+
+function fetchProgressPage(host, port, timeoutMs = 5000) {
+    return new Promise((resolve) => {
+        const req = http.get(
+            {
+                host,
+                port,
+                path: "/",
+                timeout: timeoutMs,
+            },
+            (res) => {
+                let body = "";
+                res.setEncoding("utf8");
+                res.on("data", (chunk) => {
+                    body += chunk;
+                    if (body.length > 12000) {
+                        req.destroy();
+                    }
+                });
+                res.on("end", () => resolve({ ok: true, statusCode: res.statusCode, body }));
+            }
+        );
+        req.on("timeout", () => {
+            req.destroy();
+            resolve({ ok: false });
+        });
+        req.on("error", () => resolve({ ok: false }));
+    });
+}
+
+async function monitorAfterReboot(job, config) {
+    const startedAt = Date.now();
+    const timeoutMs = 90 * 60 * 1000;
+    let lastMessage = "";
+
+    appendLog(job, "Monitor aktif: mengecek web progress dan port RDP sampai Windows siap.");
+
+    while (Date.now() - startedAt < timeoutMs) {
+        const rdpReady = await canConnectTcp(config.host, config.rdpPort);
+        if (rdpReady) {
+            setStatus(job, "rdp-ready");
+            appendLog(job, `RDP sudah terbuka: ${config.host}:${config.rdpPort}`);
+            appendLog(job, "Jika login gagal, coba username .\\administrator.");
+            return;
+        }
+
+        const progress = await fetchProgressPage(config.host, config.webPort);
+        let message;
+        if (progress.ok) {
+            if (/ERROR/i.test(progress.body)) {
+                setStatus(job, "remote-error");
+                message = `Web progress aktif, tetapi terdeteksi error. Buka http://${config.host}:${config.webPort}/`;
+            } else if (/DONE/i.test(progress.body)) {
+                setStatus(job, "windows-setup");
+                message = "Installer awal selesai. Menunggu Windows boot dan membuka RDP.";
+            } else {
+                setStatus(job, "remote-progress");
+                message = `Web progress masih aktif: http://${config.host}:${config.webPort}/`;
+            }
+        } else {
+            setStatus(job, "windows-setup");
+            message = "Web progress tidak bisa diakses. Ini normal saat VPS reboot atau Windows Setup berjalan.";
+        }
+
+        if (message !== lastMessage) {
+            appendLog(job, message);
+            lastMessage = message;
+        }
+
+        await sleep(15000);
+    }
+
+    setStatus(job, "timeout");
+    appendLog(job, "Monitor timeout setelah 90 menit. Cek console/VNC provider atau firewall RDP.");
 }
 
 function validateRequest(body) {
@@ -241,6 +336,11 @@ function runInstall(job, config) {
                         appendLog(job, `RDP nanti: ${config.host}:${config.rdpPort}`);
                         setStatus(job, code === 0 ? "rebooting" : "finished");
                         conn.end();
+                        if (code === 0) {
+                            monitorAfterReboot(job, config).catch((monitorErr) => {
+                                appendLog(job, `Monitor error: ${monitorErr.message}`);
+                            });
+                        }
                     })
                     .on("data", (data) => appendLog(job, data.toString()))
                     .stderr.on("data", (data) => appendLog(job, data.toString()));

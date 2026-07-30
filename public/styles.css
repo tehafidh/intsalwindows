@@ -314,6 +314,26 @@ select:focus {
   color: #1d4ed8;
 }
 
+.pill[data-status="remote-progress"],
+.pill[data-status="windows-setup"] {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pill[data-status="rdp-ready"] {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pill[data-status="remote-error"],
+.pill[data-status="timeout"] {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .result-grid {
   display: grid;
   grid-template-columns: 1fr;

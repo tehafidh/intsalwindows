@@ -40,9 +40,12 @@ let currentProgress = 0;
 let currentStatus = "idle";
 let lastProgressBucket = -1;
 let lastProgressTopic = "";
+let progressUrlValue = "";
+let rdpTargetValue = "";
 
 const waitingStatuses = new Set(["rebooting", "remote-progress", "windows-setup"]);
 const terminalStatuses = new Set(["rdp-ready", "failed", "remote-error", "timeout", "finished"]);
+const flowOrder = ["ssh", "installer", "web", "windows", "rdp"];
 
 function isPort(input) {
   const value = Number(input.value);
@@ -60,15 +63,15 @@ function isUrl(value) {
 
 function providerNotice() {
   if (provider.value === "universal") {
-    return "Mode Universal KVM: logic install sama untuk DigitalOcean, Tencent, dan VPS KVM sejenis.";
+    return "Siap: Universal KVM.";
   }
   if (provider.value === "digitalocean") {
-    return "DigitalOcean tidak support Windows resmi. Pastikan console recovery tersedia.";
+    return "Siap: DigitalOcean KVM.";
   }
   if (provider.value === "tencent") {
-    return "Tencent Cloud cocok. Installer default download script dari repo GitHub kamu.";
+    return "Siap: Tencent Cloud.";
   }
-  return "Pastikan provider mendukung boot installer dan menyediakan VNC/console.";
+  return "Siap: Provider KVM.";
 }
 
 function validate() {
@@ -181,23 +184,22 @@ function resetProgress() {
   currentProgress = 0;
   lastProgressBucket = -1;
   lastProgressTopic = "";
-  setProgress(0, "Progress instalasi", "Belum ada proses berjalan.", true);
+  setProgress(0, "Progress", "Belum mulai.", true);
 }
 
 function applyStatusProgress(status) {
-  const target = rdpTarget.textContent && rdpTarget.textContent !== "-" ? rdpTarget.textContent : "IP:port RDP";
   const progressByStatus = {
-    queued: [3, "Menyiapkan job", "Job sudah masuk ke backend."],
-    connecting: [8, "Menghubungkan SSH", "Backend sedang login ke VPS target."],
-    running: [16, "Installer berjalan", "Script reinstall sedang diproses di VPS."],
-    rebooting: [91, "Menunggu reboot", "Installer awal selesai, VPS sedang reboot."],
-    "remote-progress": [78, "Progress remote aktif", "Web progress VPS masih mengirim status installer."],
-    "windows-setup": [95, "Waiting RDP Ready", `Menunggu ${target} siap menerima koneksi RDP.`],
-    "rdp-ready": [100, "Windows Ready", `${target} sudah siap digunakan.`],
-    failed: [currentProgress, "Install gagal", "Cek log terakhir untuk penyebab error."],
-    "remote-error": [currentProgress, "Installer remote error", "Buka web progress VPS atau console provider untuk detail."],
-    timeout: [currentProgress, "Monitor timeout", "RDP belum terdeteksi terbuka dalam batas waktu monitor."],
-    finished: [currentProgress, "Command selesai", "Command SSH selesai, cek status remote untuk kelanjutan."],
+    queued: [3, "SSH Login", "Job dibuat."],
+    connecting: [8, "SSH Login", "Menghubungkan."],
+    running: [16, "Installer VPS", "Berjalan."],
+    rebooting: [91, "Windows Setup", "Reboot."],
+    "remote-progress": [78, "Web Progress", "Aktif."],
+    "windows-setup": [95, "Waiting RDP Ready", "Cek port RDP."],
+    "rdp-ready": [100, "Windows Ready", "Ready."],
+    failed: [currentProgress, "Gagal", "Cek log."],
+    "remote-error": [currentProgress, "Error", "Cek console."],
+    timeout: [currentProgress, "Timeout", "Belum ready."],
+    finished: [currentProgress, "Selesai", "Menunggu status."],
   };
   const progress = progressByStatus[status];
   if (progress) {
@@ -213,7 +215,7 @@ function compactProgressLog(message) {
   setProgress(
     mapInstallProgress(percent, message),
     topic,
-    `${topic}: ${percent}% dari proses remote.`,
+    `${topic}: ${percent}%.`,
   );
 
   const isNoisy =
@@ -246,7 +248,7 @@ function addLog(message) {
   if (compacted.skip) return;
   const atBottom =
     Math.ceil(liveLog.scrollTop + liveLog.clientHeight) >= liveLog.scrollHeight;
-  if (liveLog.textContent === "Menunggu install dimulai...") {
+  if (liveLog.textContent === "Log teknis akan muncul di sini.") {
     liveLog.textContent = "";
   }
   const row = document.createElement("div");
@@ -310,43 +312,89 @@ function setActiveStep(status) {
     connecting: "ssh",
     running: "installer",
     rebooting: "windows",
-    "remote-progress": "installer",
+    "remote-progress": "web",
     "windows-setup": "windows",
     "rdp-ready": "rdp",
-    "remote-error": "windows",
+    "remote-error": "web",
+    finished: "windows",
     timeout: "windows",
     failed: "ssh",
   };
   const active = stepByStatus[status] || "ssh";
-  document.querySelectorAll(".step").forEach((step) => {
-    const isActive = step.dataset.step === active;
-    step.classList.toggle("active", isActive);
-    step.classList.toggle("complete", isStepComplete(step.dataset.step, active, status));
+  document.querySelectorAll(".flow-step").forEach((step) => {
+    const state = flowState(step.dataset.step, active, status);
+    step.classList.toggle("active", state === "active");
+    step.classList.toggle("complete", state === "complete");
+    step.classList.toggle("locked", state === "locked");
+    step.classList.toggle("error", state === "error");
+    step.querySelector("em").textContent = flowLabel(step.dataset.step, state, status);
   });
 }
 
-function isStepComplete(step, active, status) {
-  const order = ["ssh", "installer", "windows", "rdp"];
-  if (status === "rdp-ready") return true;
-  return order.indexOf(step) < order.indexOf(active);
+function flowState(step, active, status) {
+  if (status === "rdp-ready") return "complete";
+  if (["failed", "remote-error", "timeout"].includes(status) && step === active) return "error";
+  if (flowOrder.indexOf(step) < flowOrder.indexOf(active)) return "complete";
+  if (step === active) return "active";
+  return "locked";
+}
+
+function flowLabel(step, state, status) {
+  if (state === "locked") return "Terkunci";
+  if (state === "complete") {
+    if (step === "rdp") return "Ready";
+    return "Selesai";
+  }
+  if (state === "error") return "Perlu cek";
+
+  const activeLabels = {
+    idle: "Belum mulai",
+    queued: "Job dibuat",
+    connecting: "Login",
+    running: "Berjalan",
+    rebooting: "Reboot",
+    "remote-progress": "Aktif",
+    "windows-setup": "Cek port",
+    finished: "Menunggu",
+  };
+  return activeLabels[status] || "Aktif";
+}
+
+function updateGatedOutputs(status) {
+  const progressText = progressUrl.querySelector("strong");
+  const progressOpen = status === "remote-progress" && Boolean(progressUrlValue);
+  const progressDone = ["rebooting", "windows-setup", "rdp-ready"].includes(status);
+  progressUrl.classList.toggle("disabled", !progressOpen);
+  progressUrl.href = progressOpen ? progressUrlValue : "#";
+  if (progressOpen) {
+    progressText.textContent = progressUrlValue;
+  } else if (progressDone) {
+    progressText.textContent = "Selesai";
+  } else {
+    progressText.textContent = progressUrlValue ? "Menunggu aktif" : "Terkunci";
+  }
+
+  const rdpReady = status === "rdp-ready";
+  rdpTarget.parentElement.classList.toggle("ready", rdpReady);
+  rdpTarget.textContent = rdpReady && rdpTargetValue ? rdpTargetValue : "Terkunci";
 }
 
 function setStage(status) {
   const labels = {
-    idle: "Menunggu konfigurasi",
-    queued: "Job dibuat, menyiapkan koneksi",
-    connecting: "Menghubungkan ke VPS",
-    running: "Menjalankan installer awal",
-    rebooting: "VPS reboot, menunggu Windows Setup",
-    "remote-progress": "Installer remote masih berjalan",
+    idle: "Belum mulai",
+    queued: "Job dibuat",
+    connecting: "SSH login",
+    running: "Installer VPS",
+    rebooting: "Windows Setup",
+    "remote-progress": "Web Progress aktif",
     "windows-setup": "Waiting RDP Ready",
     "rdp-ready": "Windows Ready",
-    "remote-error": "Installer remote melaporkan error",
-    timeout: "Monitor selesai karena timeout",
-    failed: "Job gagal",
-    finished: "Command selesai",
+    "remote-error": "Error",
+    timeout: "Timeout",
+    failed: "Gagal",
+    finished: "Menunggu status",
   };
-  stageLabel.textContent = labels[status] || "Memantau proses";
+  stageLabel.textContent = labels[status] || "Memantau";
   stageCard.dataset.status = status;
   setActiveStep(status);
 
@@ -363,14 +411,15 @@ function setStatus(status) {
   jobStatus.dataset.status = status;
   setStage(status);
   applyStatusProgress(status);
+  updateGatedOutputs(status);
   if (status === "running") {
-    jobTitle.textContent = "Installer sedang berjalan";
+    jobTitle.textContent = "Installer VPS";
   } else if (status === "connecting") {
-    jobTitle.textContent = "Menghubungkan SSH";
+    jobTitle.textContent = "SSH Login";
   } else if (status === "rebooting") {
-    jobTitle.textContent = "VPS reboot / lanjut install";
+    jobTitle.textContent = "Windows Setup";
   } else if (status === "remote-progress") {
-    jobTitle.textContent = "Installer sedang diproses";
+    jobTitle.textContent = "Web Progress";
   } else if (status === "windows-setup") {
     jobTitle.textContent = "Waiting RDP Ready";
   } else if (status === "rdp-ready") {
@@ -378,11 +427,11 @@ function setStatus(status) {
   } else if (status === "remote-error") {
     jobTitle.textContent = "Installer remote error";
   } else if (status === "timeout") {
-    jobTitle.textContent = "Monitor timeout";
+    jobTitle.textContent = "Timeout";
   } else if (status === "failed") {
-    jobTitle.textContent = "Install gagal";
+    jobTitle.textContent = "Gagal";
   } else {
-    jobTitle.textContent = "Progress install";
+    jobTitle.textContent = "Belum mulai";
   }
 }
 
@@ -450,6 +499,9 @@ form.addEventListener("submit", async (event) => {
   liveLog.textContent = "";
   resetWaitTimer();
   resetProgress();
+  progressUrlValue = "";
+  rdpTargetValue = "";
+  updateGatedOutputs("idle");
   addLog("Mengirim job install ke backend...");
   setStatus("queued");
 
@@ -467,10 +519,9 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  progressUrl.href = result.progressUrl;
-  progressUrl.classList.remove("disabled");
-  progressUrl.querySelector("strong").textContent = result.progressUrl;
-  rdpTarget.textContent = result.rdpTarget;
+  progressUrlValue = result.progressUrl;
+  rdpTargetValue = result.rdpTarget;
+  updateGatedOutputs(currentStatus);
   manualProgressIp.value = host.value.trim();
   manualProgressPort.value = webPort.value;
   connectLogs(result.jobId);
@@ -517,4 +568,5 @@ form.addEventListener("input", renderValidation);
 form.addEventListener("change", renderValidation);
 setStage("idle");
 resetProgress();
+updateGatedOutputs("idle");
 renderValidation();

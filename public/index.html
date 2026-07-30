@@ -32,20 +32,18 @@
         <div>
           <p class="eyebrow">Installer RDP Control Dashboard</p>
           <h1>Installer RDP</h1>
-          <p class="lead">
-            DigitalOcean, Tencent, upload ISO / image, dan VPS KVM sejenis dalam satu panel.
-          </p>
+          <p class="lead">Isi target, mulai install, tunggu sampai Windows Ready.</p>
         </div>
         <div class="status-panel" aria-label="Status provider">
           <div>
             <span class="status-dot ok"></span>
             <strong>Universal KVM</strong>
-            <p>Satu alur untuk DigitalOcean, Tencent Cloud, dan VPS KVM sejenis.</p>
+            <p>DigitalOcean, Tencent, dan VPS KVM sejenis.</p>
           </div>
           <div>
             <span class="status-dot warn"></span>
             <strong>Catatan support</strong>
-            <p>Provider tetap beda di firewall, console recovery, dan dukungan Windows resmi.</p>
+            <p>Pastikan firewall membuka SSH, web progress, dan RDP.</p>
           </div>
         </div>
       </section>
@@ -202,49 +200,68 @@
           <div class="stage-card" id="stage-card">
             <div class="stage-orb" aria-hidden="true"></div>
             <div>
-              <span id="stage-label">Menunggu konfigurasi</span>
+              <span id="stage-label">Belum mulai</span>
               <strong id="wait-timer">00:00</strong>
             </div>
           </div>
 
           <div class="progress-meter" id="progress-meter">
             <div class="meter-head">
-              <span id="progress-label">Progress instalasi</span>
+              <span id="progress-label">Progress</span>
               <strong id="progress-percent">0%</strong>
             </div>
             <div class="meter-track" aria-hidden="true">
               <span id="progress-fill"></span>
             </div>
-            <p id="progress-detail">Belum ada proses berjalan.</p>
+            <p id="progress-detail">Belum mulai.</p>
           </div>
 
-          <div class="step-rail" aria-label="Tahap install">
-            <div class="step active" data-step="ssh">
-              <span></span>
-              <strong>SSH</strong>
+          <div class="progress-flow" aria-label="Urutan progress">
+            <div class="flow-step active" data-step="ssh">
+              <span>01</span>
+              <div>
+                <strong>SSH Login</strong>
+                <em>Belum mulai</em>
+              </div>
             </div>
-            <div class="step" data-step="installer">
-              <span></span>
-              <strong>Installer</strong>
+            <div class="flow-step" data-step="installer">
+              <span>02</span>
+              <div>
+                <strong>Installer VPS</strong>
+                <em>Terkunci</em>
+              </div>
             </div>
-            <div class="step" data-step="windows">
-              <span></span>
-              <strong>Windows</strong>
+            <div class="flow-step" data-step="web">
+              <span>03</span>
+              <div>
+                <strong>Web Progress</strong>
+                <em>Terkunci</em>
+              </div>
             </div>
-            <div class="step" data-step="rdp">
-              <span></span>
-              <strong>RDP</strong>
+            <div class="flow-step" data-step="windows">
+              <span>04</span>
+              <div>
+                <strong>Waiting RDP</strong>
+                <em>Terkunci</em>
+              </div>
+            </div>
+            <div class="flow-step" data-step="rdp">
+              <span>05</span>
+              <div>
+                <strong>Windows Ready</strong>
+                <em>Terkunci</em>
+              </div>
             </div>
           </div>
 
           <div class="result-grid">
             <a id="progress-url" class="result-tile disabled" href="#" target="_blank" rel="noreferrer">
               <span>Web Progress VPS</span>
-              <strong>-</strong>
+              <strong>Terkunci</strong>
             </a>
             <div class="result-tile">
               <span>Target RDP</span>
-              <strong id="rdp-target">-</strong>
+              <strong id="rdp-target">Terkunci</strong>
             </div>
           </div>
 
@@ -253,7 +270,7 @@
               <span>Live log</span>
               <button class="log-action" type="button" id="clear-log">Clear</button>
             </div>
-            <div id="live-log" class="live-log">Menunggu install dimulai...</div>
+            <div id="live-log" class="live-log">Log teknis akan muncul di sini.</div>
           </div>
 
           <div class="manual-progress">
@@ -269,20 +286,12 @@
 
       <section class="notes">
         <article>
-          <h2>Alur kerja</h2>
-          <p>
-            Saat tombol install ditekan, server lokal konek SSH ke VPS,
-            download <code>reinstall.sh</code>, menjalankan mode Windows ISO/DD,
-            lalu stream output SSH ke panel log.
-          </p>
+          <h2>Urutan</h2>
+          <p>SSH masuk, installer berjalan, web progress aktif, lalu tunggu RDP ready.</p>
         </article>
         <article>
-          <h2>Wajib diperhatikan</h2>
-          <p>
-            Proses ini menghapus seluruh disk VPS. Jangan jalankan di server
-            yang masih menyimpan data penting, dan buka firewall/security group
-            untuk port SSH, web progress, dan RDP.
-          </p>
+          <h2>Catatan</h2>
+          <p>Proses menghapus disk VPS. Backup dulu dan buka port yang dipakai.</p>
         </article>
       </section>
     </main>

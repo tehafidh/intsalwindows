@@ -147,6 +147,22 @@ function fetchProgressPage(host, port, timeoutMs = 5000) {
     });
 }
 
+function stripAnsi(value) {
+    return String(value).replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function isRemoteInstallDone(body) {
+    const text = stripAnsi(body);
+    return /\*\*\*\*\*\s*DONE\s*\*\*\*\*/i.test(text) || /installation finished/i.test(text);
+}
+
+function isRemoteInstallError(body) {
+    const text = stripAnsi(body)
+        .replace(/no error reported/gi, "")
+        .replace(/without error/gi, "");
+    return /(^|\n)\s*(error|fatal|failed|panic)\b/i.test(text) || /\b(error|fatal|failed|panic):/i.test(text);
+}
+
 async function monitorAfterReboot(job, config) {
     const startedAt = Date.now();
     const timeoutMs = 90 * 60 * 1000;
@@ -168,12 +184,12 @@ async function monitorAfterReboot(job, config) {
         const progress = await fetchProgressPage(config.host, config.webPort);
         let message;
         if (progress.ok) {
-            if (/ERROR/i.test(progress.body)) {
-                setStatus(job, "remote-error");
-                message = `Web progress aktif, tetapi terdeteksi error. Buka http://${config.host}:${config.webPort}/`;
-            } else if (/DONE/i.test(progress.body)) {
+            if (isRemoteInstallDone(progress.body)) {
                 setStatus(job, "windows-setup");
                 message = "Installer awal selesai. Menunggu Windows boot dan membuka RDP.";
+            } else if (isRemoteInstallError(progress.body)) {
+                setStatus(job, "remote-error");
+                message = `Web progress aktif, tetapi terdeteksi error. Buka http://${config.host}:${config.webPort}/`;
             } else {
                 setStatus(job, "remote-progress");
                 message = `Web progress masih aktif: http://${config.host}:${config.webPort}/`;

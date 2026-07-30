@@ -40,6 +40,14 @@ app.get("/robots.txt", (req, res) => {
     ].join("\n"));
 });
 
+app.get("/healthz", (req, res) => {
+    res.json({
+        ok: true,
+        name: siteName,
+        reinstallBase: rawBase,
+    });
+});
+
 app.get("/sitemap.xml", (req, res) => {
     const origin = requestOrigin(req);
     const updated = new Date().toISOString();

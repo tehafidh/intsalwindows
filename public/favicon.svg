@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="hfdSunsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b35" />
+      <stop offset="50%" stop-color="#ff477e" />
+      <stop offset="100%" stop-color="#7209b7" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#hfdSunsetGrad)" />
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+  <text x="32" y="41" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-weight="900" font-size="23" fill="#ffffff" text-anchor="middle" letter-spacing="1">HFD</text>
+</svg>

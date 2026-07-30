@@ -1,3 +1,4 @@
+// DOM Element Selectors
 const form = document.querySelector("#installer-form");
 const host = document.querySelector("#host");
 const sshUsername = document.querySelector("#ssh-username");
@@ -35,19 +36,83 @@ const manualProgressIp = document.querySelector("#manual-progress-ip");
 const manualProgressPort = document.querySelector("#manual-progress-port");
 const startButton = document.querySelector("#start-install");
 
+// Summary Elements (Step 4 Detailed Cards)
+const sumHost = document.querySelector("#sum-host");
+const sumSshPort = document.querySelector("#sum-ssh-port");
+const sumSshUser = document.querySelector("#sum-ssh-user");
+const sumOsName = document.querySelector("#sum-os-name");
+const sumOsMode = document.querySelector("#sum-os-mode");
+const sumRdpUser = document.querySelector("#sum-rdp-user");
+const sumRdpPwd = document.querySelector("#sum-rdp-pwd");
+const sumRdpPort = document.querySelector("#sum-rdp-port");
+const sumWebPort = document.querySelector("#sum-web-port");
+const sumOptions = document.querySelector("#sum-options");
+const toggleSumPwdBtn = document.querySelector("#toggle-sum-pwd-btn");
+
+// Execution Screen Focus Elements
+const executionScreen = document.querySelector("#execution-screen");
+const stepperNav = document.querySelector(".stepper-nav");
+const execHeroIp = document.querySelector("#exec-hero-ip");
+const execHeroOs = document.querySelector("#exec-hero-os");
+const execRdpUser = document.querySelector("#exec-rdp-user");
+const execRdpPwd = document.querySelector("#exec-rdp-pwd");
+const execRdpPort = document.querySelector("#exec-rdp-port");
+const execWebPort = document.querySelector("#exec-web-port");
+const resetInstallerBtn = document.querySelector("#reset-installer-btn");
+
+// RDP Ready Success Banner Elements
+const rdpSuccessBanner = document.querySelector("#rdp-success-banner");
+const readyIp = document.querySelector("#ready-ip");
+const readyUser = document.querySelector("#ready-user");
+const readyPwd = document.querySelector("#ready-pwd");
+const readyPort = document.querySelector("#ready-port");
+const readyMstscCmd = document.querySelector("#ready-mstsc-cmd");
+const readyPwdEyeBtn = document.querySelector("#ready-pwd-eye-btn");
+const readyPwdCopyBtn = document.querySelector("#ready-pwd-copy-btn");
+const copyAllRdpBtn = document.querySelector("#copy-all-rdp-btn");
+
+// Ultra-Luxurious Full-Screen Victory Modal Elements
+const rdpReadyModal = document.querySelector("#rdp-ready-modal");
+const popReadyIp = document.querySelector("#pop-ready-ip");
+const popReadyUser = document.querySelector("#pop-ready-user");
+const popReadyPwd = document.querySelector("#pop-ready-pwd");
+const popReadyPort = document.querySelector("#pop-ready-port");
+const popReadyMstsc = document.querySelector("#pop-ready-mstsc");
+const popEyeBtn = document.querySelector("#pop-eye-btn");
+const popCopyPwdBtn = document.querySelector("#pop-copy-pwd-btn");
+const popCopyAllBtn = document.querySelector("#pop-copy-all-btn");
+const popCloseBtn = document.querySelector("#pop-close-btn");
+
+// Device History Elements
+const historyList = document.querySelector("#history-list");
+const historyCount = document.querySelector("#history-count");
+const clearHistoryBtn = document.querySelector("#clear-history-btn");
+
+// New Helper Buttons
+const genPasswordBtn = document.querySelector("#gen-password-btn");
+const copyRdpBtn = document.querySelector("#copy-rdp-btn");
+const copyLogBtn = document.querySelector("#copy-log-btn");
+const pasteUrlBtn = document.querySelector("#paste-url-btn");
+const openProgressBtn = document.querySelector("#open-progress");
+
 let ws = null;
 let waitStartedAt = null;
 let timerHandle = null;
 let currentProgress = 0;
 let currentStatus = "idle";
+let currentStep = 1;
 let lastProgressBucket = -1;
 let lastProgressTopic = "";
 let progressUrlValue = "";
 let rdpTargetValue = "";
+let activeJobId = null;
+let hasTriggeredRdpReadyModal = false;
 
 const waitingStatuses = new Set(["rebooting", "remote-progress", "windows-setup"]);
 const terminalStatuses = new Set(["rdp-ready", "failed", "remote-error", "timeout", "finished"]);
 const flowOrder = ["ssh", "installer", "web", "windows", "rdp"];
+const STORAGE_KEY = "hfd_rdp_install_history";
+
 const windowsPresets = {
   server2012r2: {
     imageName: "Windows Server 2012 R2 SERVERDATACENTER",
@@ -81,6 +146,473 @@ const windowsPresets = {
   },
 };
 
+// ==========================================================================
+// WEB AUDIO SYNTHESIZER FOR VICTORY CHIME
+// ==========================================================================
+
+function playSuccessChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.12 + 0.38);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.12);
+      osc.stop(ctx.currentTime + idx * 0.12 + 0.38);
+    });
+  } catch (err) {
+    console.warn("Audio chime failed:", err);
+  }
+}
+
+// ==========================================================================
+// FULL-SCREEN RDP READY VICTORY POPUP LOGIC
+// ==========================================================================
+
+function showRdpReadyModal() {
+  if (!rdpReadyModal) return;
+
+  const targetHost = host.value.trim();
+  const targetUser = rdpUsername.value.trim() || "administrator";
+  const targetPwd = rdpPassword.value || "";
+  const targetPort = rdpPort.value || "3389";
+
+  if (popReadyIp) popReadyIp.textContent = targetHost;
+  if (popReadyUser) popReadyUser.textContent = targetUser;
+  if (popReadyPwd) {
+    if (popReadyPwd.classList.contains("revealed")) {
+      popReadyPwd.textContent = targetPwd;
+    } else {
+      popReadyPwd.textContent = "********";
+    }
+  }
+  if (popReadyPort) popReadyPort.textContent = targetPort;
+  if (popReadyMstsc) popReadyMstsc.textContent = `mstsc /v:${targetHost}:${targetPort}`;
+
+  rdpReadyModal.classList.add("active");
+  rdpReadyModal.setAttribute("aria-hidden", "false");
+}
+
+function hideRdpReadyModal() {
+  if (rdpReadyModal) {
+    rdpReadyModal.classList.remove("active");
+    rdpReadyModal.setAttribute("aria-hidden", "true");
+  }
+}
+
+if (popEyeBtn) {
+  popEyeBtn.addEventListener("click", () => {
+    if (popReadyPwd) {
+      popReadyPwd.classList.toggle("revealed");
+      showRdpReadyModal();
+    }
+  });
+}
+
+if (popCopyPwdBtn) {
+  popCopyPwdBtn.addEventListener("click", () => {
+    const pwdVal = rdpPassword.value || "";
+    navigator.clipboard.writeText(pwdVal);
+    const orig = popCopyPwdBtn.textContent;
+    popCopyPwdBtn.textContent = "Tersalin!";
+    setTimeout(() => { popCopyPwdBtn.textContent = orig; }, 2000);
+  });
+}
+
+if (popCopyAllBtn) {
+  popCopyAllBtn.addEventListener("click", () => {
+    const targetHost = host.value.trim();
+    const targetUser = rdpUsername.value.trim() || "administrator";
+    const targetPwd = rdpPassword.value || "";
+    const targetPort = rdpPort.value || "3389";
+
+    copyAllRdpDetails(targetHost, targetUser, targetPwd, targetPort);
+  });
+}
+
+if (popCloseBtn) {
+  popCloseBtn.addEventListener("click", hideRdpReadyModal);
+}
+
+// ==========================================================================
+// DEVICE-LOCAL STORAGE INSTALLATION HISTORY LOGIC (ISOLATED PER BROWSER)
+// ==========================================================================
+
+function getDeviceHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDeviceHistory(historyArray) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(historyArray.slice(0, 30)));
+  } catch (err) {
+    console.warn("Storage save failed:", err);
+  }
+  renderDeviceHistory();
+}
+
+function addJobToHistory(jobInfo) {
+  const history = getDeviceHistory();
+  // Filter out duplicate if existing
+  const filtered = history.filter((item) => item.id !== jobInfo.id);
+  filtered.unshift(jobInfo);
+  saveDeviceHistory(filtered);
+}
+
+function updateJobStatusInHistory(jobId, newStatus) {
+  const history = getDeviceHistory();
+  const target = history.find((item) => item.id === jobId);
+  if (target) {
+    target.status = newStatus;
+    saveDeviceHistory(history);
+  }
+}
+
+function renderDeviceHistory() {
+  const history = getDeviceHistory();
+  if (historyCount) historyCount.textContent = history.length;
+
+  if (!historyList) return;
+
+  if (history.length === 0) {
+    historyList.innerHTML = `
+      <div class="history-empty">
+        <span>Belum ada riwayat instalasi pada perangkat ini.</span>
+      </div>
+    `;
+    return;
+  }
+
+  historyList.innerHTML = history
+    .map((item) => {
+      const dateStr = new Date(item.timestamp).toLocaleString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      return `
+        <div class="history-card" data-job-id="${item.id}">
+          <div class="hist-card-head">
+            <div class="hist-host-info">
+              <strong>${item.host}</strong>
+              <span class="hist-os-tag">${item.osName}</span>
+            </div>
+            <span class="hist-status-pill" data-status="${item.status}">${item.status}</span>
+          </div>
+
+          <div class="hist-card-details">
+            <div class="hist-cred-row">
+              <span>Username: <strong class="highlight-text">${item.rdpUsername}</strong></span>
+              <span>Port RDP: <strong>${item.rdpPort}</strong></span>
+              <span>Port Web: <strong>${item.webPort}</strong></span>
+            </div>
+            <div class="hist-time">Dipasang: ${dateStr}</div>
+          </div>
+
+          <div class="hist-card-actions">
+            <button type="button" class="btn-copy-chip" onclick="copyText('${item.host}:${item.rdpPort}')">
+              Salin IP:Port
+            </button>
+            <button type="button" class="btn-copy-chip" onclick="copyText('mstsc /v:${item.host}:${item.rdpPort}')">
+              Salin Command MSTSC
+            </button>
+            <button type="button" class="btn-copy-chip" onclick="copyAllRdpDetails('${item.host}', '${item.rdpUsername}', '${item.rdpPassword}', '${item.rdpPort}')">
+              Salin Semua Kredensial
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+if (clearHistoryBtn) {
+  clearHistoryBtn.addEventListener("click", () => {
+    if (window.confirm("Hapus seluruh riwayat instalasi pada perangkat/browser ini?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      renderDeviceHistory();
+    }
+  });
+}
+
+// Global Copy Helper for inline buttons
+window.copyText = function (text) {
+  navigator.clipboard.writeText(text);
+  alert(`Tersalin ke Clipboard: ${text}`);
+};
+
+window.copyAllRdpDetails = function (ip, user, pwd, port) {
+  const formatted = [
+    `=== KREDENSIAL RDP WINDOWS (Haf.id Store) ===`,
+    `IP Address Target: ${ip}`,
+    `Username RDP     : ${user}`,
+    `Password RDP     : ${pwd}`,
+    `Port RDP         : ${port}`,
+    `Perintah MSTSC   : mstsc /v:${ip}:${port}`,
+    `==============================================`,
+  ].join("\n");
+
+  navigator.clipboard.writeText(formatted);
+  alert("Seluruh detail RDP berhasil disalin ke Clipboard!");
+};
+
+// ==========================================================================
+// RDP READY SUCCESS BANNER LOGIC
+// ==========================================================================
+
+function updateRdpSuccessBanner() {
+  if (!rdpSuccessBanner) return;
+
+  const targetHost = host.value.trim();
+  const targetUser = rdpUsername.value.trim() || "administrator";
+  const targetPwd = rdpPassword.value || "";
+  const targetPort = rdpPort.value || "3389";
+
+  if (readyIp) readyIp.textContent = targetHost;
+  if (readyUser) readyUser.textContent = targetUser;
+  if (readyPwd) {
+    if (readyPwd.classList.contains("revealed")) {
+      readyPwd.textContent = targetPwd;
+    } else {
+      readyPwd.textContent = "********";
+    }
+  }
+  if (readyPort) readyPort.textContent = targetPort;
+  if (readyMstscCmd) readyMstscCmd.textContent = `mstsc /v:${targetHost}:${targetPort}`;
+
+  rdpSuccessBanner.style.display = "flex";
+}
+
+if (readyPwdEyeBtn) {
+  readyPwdEyeBtn.addEventListener("click", () => {
+    if (readyPwd) {
+      readyPwd.classList.toggle("revealed");
+      updateRdpSuccessBanner();
+    }
+  });
+}
+
+if (readyPwdCopyBtn) {
+  readyPwdCopyBtn.addEventListener("click", () => {
+    const pwdVal = rdpPassword.value || "";
+    navigator.clipboard.writeText(pwdVal);
+    const orig = readyPwdCopyBtn.textContent;
+    readyPwdCopyBtn.textContent = "Tersalin!";
+    setTimeout(() => { readyPwdCopyBtn.textContent = orig; }, 2000);
+  });
+}
+
+if (copyAllRdpBtn) {
+  copyAllRdpBtn.addEventListener("click", () => {
+    const targetHost = host.value.trim();
+    const targetUser = rdpUsername.value.trim() || "administrator";
+    const targetPwd = rdpPassword.value || "";
+    const targetPort = rdpPort.value || "3389";
+
+    copyAllRdpDetails(targetHost, targetUser, targetPwd, targetPort);
+  });
+}
+
+// Attach event listeners for .btn-copy-chip data-copy targets
+document.querySelectorAll(".btn-copy-chip[data-copy]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const targetEl = document.querySelector(btn.dataset.copy);
+    if (targetEl) {
+      navigator.clipboard.writeText(targetEl.textContent.trim());
+      const orig = btn.textContent;
+      btn.textContent = "Tersalin!";
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+  });
+});
+
+// ==========================================================================
+// DYNAMIC VIEW TRANSITIONS (FORM VS ACTIVE INSTALLATION SCREEN)
+// ==========================================================================
+
+function enterExecutionView() {
+  form.style.display = "none";
+  if (stepperNav) stepperNav.style.display = "none";
+  if (executionScreen) executionScreen.style.display = "flex";
+  if (rdpSuccessBanner) rdpSuccessBanner.style.display = "none";
+
+  if (execHeroIp) execHeroIp.textContent = host.value.trim() || "-";
+  if (execHeroOs) {
+    const presetObj = windowsPresets[windowsPreset.value];
+    execHeroOs.textContent = presetObj && windowsPreset.value !== "custom" ? presetObj.imageName : (imageName.value.trim() || "Custom ISO");
+  }
+  if (execRdpUser) execRdpUser.textContent = rdpUsername.value.trim() || "administrator";
+  if (execRdpPwd) execRdpPwd.textContent = rdpPassword.value || "********";
+  if (execRdpPort) execRdpPort.textContent = rdpPort.value || "3389";
+  if (execWebPort) execWebPort.textContent = `Port ${webPort.value || 80}`;
+
+  document.body.classList.add("is-installing");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function exitExecutionView() {
+  if (executionScreen) executionScreen.style.display = "none";
+  if (rdpSuccessBanner) rdpSuccessBanner.style.display = "none";
+  if (stepperNav) stepperNav.style.display = "flex";
+  form.style.display = "flex";
+  document.body.classList.remove("is-installing");
+  switchStep(1);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+if (resetInstallerBtn) {
+  resetInstallerBtn.addEventListener("click", () => {
+    if (window.confirm("Buka kembali formulir untuk melakukan konfigurasi VPS baru?")) {
+      exitExecutionView();
+    }
+  });
+}
+
+// ==========================================================================
+// CUSTOM LUXURY CONFIRMATION MODAL LOGIC
+// ==========================================================================
+
+function showConfirmModal(targetIp) {
+  return new Promise((resolve) => {
+    const modal = document.querySelector("#confirm-modal");
+    const targetIpSpan = document.querySelector("#modal-target-ip");
+    const confirmBtn = document.querySelector("#modal-confirm-btn");
+    const cancelBtn = document.querySelector("#modal-cancel-btn");
+
+    if (!modal) return resolve(window.confirm("Install akan menghapus seluruh disk VPS target. Lanjutkan?"));
+
+    if (targetIpSpan) targetIpSpan.textContent = targetIp || host.value.trim() || "-";
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const cleanup = () => {
+      modal.classList.remove("active");
+      modal.setAttribute("aria-hidden", "true");
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+    };
+
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+  });
+}
+
+// ==========================================================================
+// STEPPER WIZARD NAVIGATION & OS CARDS LOGIC
+// ==========================================================================
+
+function switchStep(targetStep) {
+  const stepNum = Number(targetStep);
+  if (stepNum < 1 || stepNum > 4) return;
+  currentStep = stepNum;
+
+  // Update Stepper Nav Tabs
+  document.querySelectorAll(".step-tab").forEach((tab) => {
+    const tNum = Number(tab.dataset.stepTarget);
+    tab.classList.toggle("active", tNum === currentStep);
+    tab.classList.toggle("completed", tNum < currentStep);
+  });
+
+  // Update Wizard Panes
+  document.querySelectorAll(".wizard-pane").forEach((pane) => {
+    const pNum = Number(pane.dataset.stepPane);
+    pane.classList.toggle("active", pNum === currentStep);
+  });
+
+  updateSummary();
+}
+
+function syncOsCards(presetKey) {
+  document.querySelectorAll(".os-card").forEach((card) => {
+    card.classList.toggle("active", card.dataset.preset === presetKey);
+  });
+}
+
+function updateSummary() {
+  if (sumHost) sumHost.textContent = host.value.trim() || "-";
+  if (sumSshPort) sumSshPort.textContent = sshLoginPort.value || "22";
+  if (sumSshUser) sumSshUser.textContent = sshUsername.value.trim() || "root";
+
+  if (sumOsName) {
+    const presetObj = windowsPresets[windowsPreset.value];
+    sumOsName.textContent = presetObj && windowsPreset.value !== "custom" ? presetObj.imageName : (imageName.value.trim() || "Custom ISO");
+  }
+  if (sumOsMode) sumOsMode.textContent = windowsPreset.value === "custom" ? "Custom ISO Direct Link" : "Windows ISO Official";
+
+  if (sumRdpUser) sumRdpUser.textContent = rdpUsername.value.trim() || "administrator";
+  if (sumRdpPwd) {
+    const pwdVal = rdpPassword.value || "";
+    if (sumRdpPwd.classList.contains("revealed")) {
+      sumRdpPwd.textContent = pwdVal || "(Belum diisi)";
+    } else {
+      sumRdpPwd.textContent = pwdVal ? "********" : "(Belum diisi)";
+    }
+  }
+  if (sumRdpPort) sumRdpPort.textContent = rdpPort.value || "3389";
+  if (sumWebPort) sumWebPort.textContent = webPort.value || "80";
+
+  if (sumOptions) {
+    const opts = [];
+    if (allowPing.checked) opts.push("Ping ICMP [ok]");
+    if (autoReboot.checked) opts.push("Auto Reboot [ok]");
+    if (cnMirror.checked) opts.push("CN Mirror [ok]");
+    sumOptions.textContent = opts.length ? opts.join(" | ") : "Tanpa Opsi";
+  }
+}
+
+if (toggleSumPwdBtn) {
+  toggleSumPwdBtn.addEventListener("click", () => {
+    if (sumRdpPwd) {
+      sumRdpPwd.classList.toggle("revealed");
+      updateSummary();
+    }
+  });
+}
+
+// Password Generator
+function generateRandomPassword() {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let pwd = "";
+  // Ensure strong password requirements: uppercase, lowercase, number, symbol
+  pwd += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
+  pwd += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)];
+  pwd += "0123456789"[Math.floor(Math.random() * 10)];
+  pwd += "!@#$%^&*"[Math.floor(Math.random() * 8)];
+  for (let i = 4; i < 14; i++) {
+    pwd += chars[Math.floor(Math.random() * chars.length)];
+  }
+  rdpPassword.value = pwd;
+  renderValidation();
+}
+
+// Helper & Validation Functions
 function isPort(input) {
   const value = Number(input.value);
   return Number.isInteger(value) && value >= 1 && value <= 65535;
@@ -96,16 +628,7 @@ function isUrl(value) {
 }
 
 function providerNotice() {
-  if (provider.value === "universal") {
-    return "Siap: Universal KVM.";
-  }
-  if (provider.value === "digitalocean") {
-    return "Siap: DigitalOcean KVM.";
-  }
-  if (provider.value === "tencent") {
-    return "Siap: Tencent Cloud.";
-  }
-  return "Siap: Provider KVM.";
+  return "Siap: Universal KVM VPS (Ready ISO).";
 }
 
 function validate() {
@@ -124,10 +647,10 @@ function validate() {
     problems.push("Port SSH login harus 1 sampai 65535.");
   }
   if (!isUrl(imageUrl.value.trim())) {
-    problems.push("Link ISO/image harus http, https, atau magnet.");
+    problems.push("Link ISO Windows harus URL http atau https yang valid.");
   }
-  if (mode.value === "iso" && imageName.value.trim().length < 3) {
-    problems.push("Nama image Windows wajib diisi.");
+  if (imageName.value.trim().length < 3) {
+    problems.push("Nama edisi WIM Windows wajib diisi (minimal 3 karakter).");
   }
   if (!rdpUsername.value.trim()) {
     problems.push("Username RDP wajib diisi.");
@@ -152,11 +675,10 @@ function validate() {
 }
 
 function renderValidation() {
-  const isDdMode = mode.value === "dd";
-  windowsPresetRow.hidden = isDdMode;
-  imageNameRow.hidden = isDdMode;
-  manualProgressIp.value = manualProgressIp.value || host.value.trim();
-  manualProgressPort.value = webPort.value;
+  if (manualProgressIp) manualProgressIp.value = manualProgressIp.value || host.value.trim();
+  if (manualProgressPort) manualProgressPort.value = webPort.value;
+
+  updateSummary();
 
   const problems = validate();
   if (problems.length) {
@@ -171,14 +693,26 @@ function renderValidation() {
 }
 
 function applyWindowsPreset() {
-  const preset = windowsPresets[windowsPreset.value];
-  if (!preset) {
+  const presetKey = windowsPreset.value;
+  syncOsCards(presetKey);
+  mode.value = "iso";
+
+  if (presetKey === "custom") {
+    // Explicitly CLEAR both fields so user can input/paste their custom link from scratch
+    imageUrl.value = "";
+    imageName.value = "";
+    imageUrl.placeholder = "Tempel / ketik URL ISO Windows kustom Anda (https://domain.com/win.iso)";
+    imageName.placeholder = "Ketik nama edisi WIM Windows (contoh: Windows Server 2022 Datacenter)";
     renderValidation();
+    setTimeout(() => imageUrl.focus(), 50);
     return;
   }
-  mode.value = "iso";
-  imageName.value = preset.imageName;
-  imageUrl.value = preset.imageUrl;
+
+  const preset = windowsPresets[presetKey];
+  if (preset) {
+    imageName.value = preset.imageName;
+    imageUrl.value = preset.imageUrl;
+  }
   renderValidation();
 }
 
@@ -218,9 +752,7 @@ function mapInstallProgress(percent, message) {
 
 function setProgress(percent, label, detail, force = false) {
   const normalized = Math.min(100, Math.max(0, Math.round(percent)));
-  if (!force && normalized < currentProgress) {
-    return;
-  }
+  if (!force && normalized < currentProgress) return;
   currentProgress = normalized;
   progressLabel.textContent = label;
   progressPercent.textContent = `${normalized}%`;
@@ -232,254 +764,200 @@ function resetProgress() {
   currentProgress = 0;
   lastProgressBucket = -1;
   lastProgressTopic = "";
-  setProgress(0, "Progress", "Belum mulai.", true);
+  setProgress(0, "Progress Installer", "Belum mulai.", true);
 }
 
 function applyStatusProgress(status) {
-  const progressByStatus = {
-    queued: [3, "SSH Login", "Job dibuat."],
-    connecting: [8, "SSH Login", "Menghubungkan."],
-    running: [16, "Installer VPS", "Berjalan."],
-    rebooting: [91, "Windows Setup", "Reboot."],
-    "remote-progress": [78, "Web Progress", "Aktif."],
-    "windows-setup": [95, "Waiting RDP Ready", "Cek port RDP."],
-    "rdp-ready": [100, "Windows Ready", "Ready."],
-    failed: [currentProgress, "Gagal", "Cek log."],
-    "remote-error": [currentProgress, "Error", "Cek console."],
-    timeout: [currentProgress, "Gagal", "RDP belum ready 15 menit."],
-    finished: [currentProgress, "Selesai", "Menunggu status."],
+  const labelMap = {
+    queued: ["Job Antrean", "Menunggu antrean..."],
+    running: ["Job Dijalankan", "Script runner mulai..."],
+    rebooting: ["Reboot VPS Target", "Server reboot..."],
+    "remote-progress": ["Remote Progress Web", "Menerima progress..."],
+    "windows-setup": ["Windows Penyiapan", "Penyiapan Windows..."],
+    "rdp-ready": ["RDP Siap Dituju", "Install selesai."],
+    failed: ["Gagal", "Terjadi kesalahan."],
+    "remote-error": ["Gagal Progress", "Remoting gagal."],
+    timeout: ["Timeout Progress", "Batas waktu habis."],
+    finished: ["Selesai", "Reinstall selesai."],
   };
-  const progress = progressByStatus[status];
-  if (progress) {
-    setProgress(...progress);
-  }
-}
 
-function compactProgressLog(message) {
-  const percent = extractLogPercent(message);
-  if (percent === null) return { message, skip: false };
+  const info = labelMap[status] || ["Status", status];
+  stageLabel.textContent = info[0];
 
-  const topic = progressTopic(message);
-  setProgress(
-    mapInstallProgress(percent, message),
-    topic,
-    `${topic}: ${percent}%.`,
-  );
-
-  const isNoisy =
-    /calculating integrity table|mib of|archiving file data|extracting|download|aria2|^\s*#/i.test(message);
-  if (!isNoisy) return { message, skip: false };
-
-  const bucket = percent === 100 ? 100 : Math.floor(percent / 10) * 10;
-  const shouldShow = topic !== lastProgressTopic || bucket > lastProgressBucket || percent === 100;
-  if (!shouldShow) return { message, skip: true };
-
-  lastProgressBucket = bucket;
-  lastProgressTopic = topic;
-  const { prefix } = splitLogPrefix(message);
-  return {
-    message: `${prefix}${topic}: ${percent}%`,
-    skip: false,
+  const bucketMap = {
+    queued: 5,
+    running: 15,
+    rebooting: 25,
+    "remote-progress": 40,
+    "windows-setup": 75,
+    "rdp-ready": 100,
+    finished: 100,
   };
-}
 
-function applyStatusFromLog(message) {
-  if (terminalStatuses.has(currentStatus)) return;
-  if (/websocket disconnected|installation finished|(?:^\[[^\]]+\]\s*)?\*\*\*\*\*\s*done/i.test(message)) {
-    setStatus("windows-setup");
+  if (bucketMap[status] !== undefined) {
+    setProgress(bucketMap[status], info[0], info[1]);
   }
 }
 
-function addLog(message) {
-  applyStatusFromLog(message);
-  const compacted = compactProgressLog(message);
-  if (compacted.skip) return;
-  const atBottom =
-    Math.ceil(liveLog.scrollTop + liveLog.clientHeight) >= liveLog.scrollHeight;
-  if (liveLog.textContent === "Log teknis akan muncul di sini.") {
-    liveLog.textContent = "";
-  }
-  const row = document.createElement("div");
-  row.className = `log-row ${classifyLog(compacted.message)}`;
-  row.textContent = compacted.message;
-  liveLog.appendChild(row);
-  if (atBottom) {
-    liveLog.scrollTop = liveLog.scrollHeight;
-  }
-}
+function updateFlowStep(activeStep, hasError = false) {
+  const isAllComplete = activeStep === "rdp" && !hasError;
+  const activeIndex = flowOrder.indexOf(activeStep);
 
-function classifyLog(message) {
-  if (/error|failed|gagal|timeout/i.test(message)) return "is-error";
-  if (/done|berhasil|ready|sudah terbuka/i.test(message)) return "is-ok";
-  if (/menunggu|waiting|reboot|windows setup|tidak bisa diakses/i.test(message)) return "is-wait";
-  if (/ssh|menghubungkan|connected|tersambung/i.test(message)) return "is-info";
-  return "is-muted";
-}
+  document.querySelectorAll(".flow-step").forEach((el) => {
+    const key = el.dataset.step;
+    const itemIndex = flowOrder.indexOf(key);
 
-function formatElapsed(ms) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
+    el.classList.remove("active", "complete", "error");
+    const sub = el.querySelector("em");
 
-function updateTimer() {
-  if (!waitStartedAt) {
-    waitTimer.textContent = "00:00";
-    return;
-  }
-  waitTimer.textContent = formatElapsed(Date.now() - waitStartedAt);
-}
-
-function startWaitTimer() {
-  if (!waitStartedAt) {
-    waitStartedAt = Date.now();
-  }
-  if (!timerHandle) {
-    timerHandle = window.setInterval(updateTimer, 1000);
-  }
-  updateTimer();
-}
-
-function stopWaitTimer() {
-  if (timerHandle) {
-    window.clearInterval(timerHandle);
-    timerHandle = null;
-  }
-  updateTimer();
-}
-
-function resetWaitTimer() {
-  waitStartedAt = null;
-  stopWaitTimer();
-}
-
-function setActiveStep(status) {
-  const stepByStatus = {
-    queued: "ssh",
-    connecting: "ssh",
-    running: "installer",
-    rebooting: "windows",
-    "remote-progress": "web",
-    "windows-setup": "windows",
-    "rdp-ready": "rdp",
-    "remote-error": "web",
-    finished: "windows",
-    timeout: "windows",
-    failed: "ssh",
-  };
-  const active = stepByStatus[status] || "ssh";
-  document.querySelectorAll(".flow-step").forEach((step) => {
-    const state = flowState(step.dataset.step, active, status);
-    step.classList.toggle("active", state === "active");
-    step.classList.toggle("complete", state === "complete");
-    step.classList.toggle("locked", state === "locked");
-    step.classList.toggle("error", state === "error");
-    step.querySelector("em").textContent = flowLabel(step.dataset.step, state, status);
+    if (isAllComplete || itemIndex < activeIndex) {
+      el.classList.add("complete");
+      if (sub) sub.textContent = "Selesai";
+    } else if (itemIndex === activeIndex) {
+      if (hasError) {
+        el.classList.add("error");
+        if (sub) sub.textContent = "Error";
+      } else {
+        el.classList.add("active");
+        if (sub) sub.textContent = "Proses...";
+      }
+    } else {
+      if (sub) sub.textContent = "Terkunci";
+    }
   });
 }
 
-function flowState(step, active, status) {
-  if (status === "rdp-ready") return "complete";
-  if (["failed", "remote-error", "timeout"].includes(status) && step === active) return "error";
-  if (flowOrder.indexOf(step) < flowOrder.indexOf(active)) return "complete";
-  if (step === active) return "active";
-  return "locked";
-}
-
-function flowLabel(step, state, status) {
-  if (state === "locked") return "Terkunci";
-  if (state === "complete") {
-    if (step === "rdp") return "Ready";
-    return "Selesai";
-  }
-  if (state === "error") return "Perlu cek";
-
-  const activeLabels = {
-    idle: "Belum mulai",
-    queued: "Job dibuat",
-    connecting: "Login",
-    running: "Berjalan",
-    rebooting: "Reboot",
-    "remote-progress": "Aktif",
-    "windows-setup": "Cek port",
-    finished: "Menunggu",
-  };
-  return activeLabels[status] || "Aktif";
-}
-
 function updateGatedOutputs(status) {
-  const progressText = progressUrl.querySelector("strong");
-  const progressOpen = status === "remote-progress" && Boolean(progressUrlValue);
-  const progressDone = ["rebooting", "windows-setup", "rdp-ready"].includes(status);
-  progressUrl.classList.toggle("disabled", !progressOpen);
-  progressUrl.href = progressOpen ? progressUrlValue : "#";
-  if (progressOpen) {
-    progressText.textContent = progressUrlValue;
-  } else if (progressDone) {
-    progressText.textContent = "Selesai";
+  const isReady = status === "rdp-ready" || status === "finished";
+
+  if (isReady && progressUrlValue) {
+    progressUrl.href = progressUrlValue;
+    progressUrl.classList.remove("disabled");
+    progressUrl.querySelector("strong").textContent = progressUrlValue;
   } else {
-    progressText.textContent = progressUrlValue ? "Menunggu aktif" : "Terkunci";
+    progressUrl.href = "#";
+    progressUrl.classList.add("disabled");
+    progressUrl.querySelector("strong").textContent = "Terkunci";
   }
 
-  const rdpReady = status === "rdp-ready";
-  rdpTarget.parentElement.classList.toggle("ready", rdpReady);
-  rdpTarget.textContent = rdpReady && rdpTargetValue ? rdpTargetValue : "Terkunci";
+  if (isReady && rdpTargetValue) {
+    rdpTarget.textContent = rdpTargetValue;
+  } else {
+    rdpTarget.textContent = "Terkunci";
+  }
+}
+
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function resetWaitTimer() {
+  if (timerHandle) clearInterval(timerHandle);
+  timerHandle = null;
+  waitStartedAt = null;
+  waitTimer.textContent = "00:00";
+}
+
+function startWaitTimer() {
+  if (waitStartedAt) return;
+  waitStartedAt = Date.now();
+  timerHandle = setInterval(() => {
+    waitTimer.textContent = formatElapsed(Date.now() - waitStartedAt);
+  }, 1000);
+}
+
+function stopWaitTimer() {
+  if (timerHandle) clearInterval(timerHandle);
+  timerHandle = null;
 }
 
 function setStage(status) {
-  const labels = {
-    idle: "Belum mulai",
-    queued: "Job dibuat",
-    connecting: "SSH login",
-    running: "Installer VPS",
-    rebooting: "Windows Setup",
-    "remote-progress": "Web Progress aktif",
-    "windows-setup": "Waiting RDP Ready",
-    "rdp-ready": "Windows Ready",
-    "remote-error": "Error",
-    timeout: "Gagal",
-    failed: "Gagal",
-    finished: "Menunggu status",
-  };
-  stageLabel.textContent = labels[status] || "Memantau";
+  currentStatus = status;
+  jobStatus.dataset.status = status;
+  jobStatus.textContent = status;
   stageCard.dataset.status = status;
-  setActiveStep(status);
+
+  applyStatusProgress(status);
+
+  if (activeJobId) {
+    updateJobStatusInHistory(activeJobId, status);
+  }
 
   if (waitingStatuses.has(status)) {
     startWaitTimer();
-  } else if (terminalStatuses.has(status)) {
+  }
+  if (terminalStatuses.has(status)) {
     stopWaitTimer();
+  }
+
+  if (status === "queued" || status === "running") {
+    jobTitle.textContent = "Koneksi SSH Target";
+    updateFlowStep("ssh");
+  } else if (status === "rebooting") {
+    jobTitle.textContent = "Reboot & Runner Script";
+    updateFlowStep("installer");
+  } else if (status === "remote-progress") {
+    jobTitle.textContent = "Progress Installer Web";
+    updateFlowStep("web");
+  } else if (status === "windows-setup") {
+    jobTitle.textContent = "Penyiapan Windows Target";
+    updateFlowStep("windows");
+  } else if (status === "rdp-ready" || status === "finished") {
+    jobTitle.textContent = "Install Selesai - RDP Ready!";
+    updateFlowStep("rdp", false);
+    updateRdpSuccessBanner();
+
+    // Trigger Ultra-Luxurious Full-Screen Victory Popup + Sound Chime
+    if (!hasTriggeredRdpReadyModal) {
+      hasTriggeredRdpReadyModal = true;
+      showRdpReadyModal();
+      playSuccessChime();
+    }
+  } else if (status === "failed" || status === "remote-error" || status === "timeout") {
+    jobTitle.textContent = "Proses Gagal";
+    updateFlowStep("installer", true);
   }
 }
 
-function setStatus(status) {
-  currentStatus = status;
-  jobStatus.textContent = status;
-  jobStatus.dataset.status = status;
-  setStage(status);
-  applyStatusProgress(status);
-  updateGatedOutputs(status);
-  if (status === "running") {
-    jobTitle.textContent = "Installer VPS";
-  } else if (status === "connecting") {
-    jobTitle.textContent = "SSH Login";
-  } else if (status === "rebooting") {
-    jobTitle.textContent = "Windows Setup";
-  } else if (status === "remote-progress") {
-    jobTitle.textContent = "Web Progress";
-  } else if (status === "windows-setup") {
-    jobTitle.textContent = "Waiting RDP Ready";
-  } else if (status === "rdp-ready") {
-    jobTitle.textContent = "Windows Ready";
-  } else if (status === "remote-error") {
-    jobTitle.textContent = "Installer remote error";
-  } else if (status === "timeout") {
-    jobTitle.textContent = "Gagal";
-  } else if (status === "failed") {
-    jobTitle.textContent = "Gagal";
-  } else {
-    jobTitle.textContent = "Belum mulai";
+function addLog(text) {
+  if (!text) return;
+
+  if (liveLog.textContent === "Log teknis akan muncul di sini...") {
+    liveLog.textContent = "";
+  }
+
+  const div = document.createElement("div");
+  div.className = "log-row";
+
+  if (/error|failed|fault|invalid|fatal/i.test(text)) {
+    div.classList.add("is-error");
+  } else if (/success|ok|ready|complete|finished/i.test(text)) {
+    div.classList.add("is-ok");
+  } else if (/wait|reboot|progress|downloading/i.test(text)) {
+    div.classList.add("is-wait");
+  } else if (/\[info\]|\[ssh\]|\[ws\]/i.test(text)) {
+    div.classList.add("is-info");
+  }
+
+  div.textContent = text;
+  liveLog.appendChild(div);
+  liveLog.scrollTop = liveLog.scrollHeight;
+
+  const percent = extractLogPercent(text);
+  if (percent !== null) {
+    const topic = progressTopic(text);
+    const mapped = mapInstallProgress(percent, text);
+    const detail = `${topic}: ${percent}% (${mapped}% total)`;
+    setProgress(mapped, topic, detail);
+
+    const bucket = Math.floor(percent / 10);
+    if (bucket !== lastProgressBucket || topic !== lastProgressTopic) {
+      lastProgressBucket = bucket;
+      lastProgressTopic = topic;
+    }
   }
 }
 
@@ -488,16 +966,17 @@ function payload() {
     host: host.value.trim(),
     sshUsername: sshUsername.value.trim(),
     sshPassword: sshPassword.value,
-    sshLoginPort: Number(sshLoginPort.value),
+    sshLoginPort: Number(sshLoginPort.value) || 22,
     provider: provider.value,
     mode: mode.value,
+    windowsPreset: windowsPreset.value,
     imageName: imageName.value.trim(),
     imageUrl: imageUrl.value.trim(),
-    username: rdpUsername.value.trim(),
+    rdpUsername: rdpUsername.value.trim(),
     rdpPassword: rdpPassword.value,
-    rdpPort: Number(rdpPort.value),
-    installSshPort: Number(installSshPort.value),
-    webPort: Number(webPort.value),
+    rdpPort: Number(rdpPort.value) || 3389,
+    installSshPort: Number(installSshPort.value) || 22,
+    webPort: Number(webPort.value) || 80,
     allowPing: allowPing.checked,
     autoReboot: autoReboot.checked,
     cnMirror: cnMirror.checked,
@@ -507,78 +986,148 @@ function payload() {
 function connectLogs(jobId) {
   if (ws) {
     ws.close();
+    ws = null;
   }
-  const scheme = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${scheme}://${location.host}/ws/jobs/${jobId}`);
-  ws.addEventListener("message", (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === "status") {
-      setStatus(data.status);
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/ws/jobs/${jobId}`;
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    addLog("[ws] WebSocket terhubung.");
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "snapshot") {
+        setStage(data.job.status);
+        progressUrlValue = data.job.progressUrl || progressUrlValue;
+        rdpTargetValue = data.job.rdpTarget || rdpTargetValue;
+        updateGatedOutputs(data.job.status);
+
+        if (Array.isArray(data.job.logs)) {
+          data.job.logs.forEach((logItem) => {
+            const msg = typeof logItem === "object" ? logItem.message : logItem;
+            addLog(msg);
+          });
+        }
+      } else if (data.type === "status") {
+        setStage(data.status);
+        if (data.progressUrl) progressUrlValue = data.progressUrl;
+        if (data.rdpTarget) rdpTargetValue = data.rdpTarget;
+        updateGatedOutputs(data.status);
+      } else if (data.type === "log") {
+        const msg = typeof data.entry === "object" ? data.entry.message : data.message;
+        addLog(msg);
+      }
+    } catch (err) {
+      console.warn("WebSocket parse error:", err);
     }
-    if (data.type === "snapshot") {
-      data.logs.forEach((entry) => addLog(`[${entry.time}] ${entry.message}`));
+  };
+
+  ws.onerror = () => {
+    addLog("[ws] Error koneksi WebSocket.");
+  };
+
+  ws.onclose = () => {
+    addLog("[ws] WebSocket terputus.");
+  };
+}
+
+// Open Progress URL Helper Button
+if (openProgressBtn) {
+  openProgressBtn.addEventListener("click", () => {
+    const ip = (manualProgressIp.value.trim() || host.value.trim());
+    const port = (manualProgressPort.value || webPort.value || 80);
+    if (!ip) {
+      alert("Masukkan IP Address VPS target terlebih dahulu.");
+      return;
     }
-    if (data.type === "log") {
-      addLog(`[${data.entry.time}] ${data.entry.message}`);
-    }
+    const url = `http://${ip}:${port}/`;
+    window.open(url, "_blank", "noopener,noreferrer");
   });
-  ws.addEventListener("close", () => {
-    addLog("WebSocket disconnected. Waiting RDP Ready...");
-    if (!terminalStatuses.has(currentStatus)) {
-      setStatus("windows-setup");
+}
+
+// Stepper Tab Click Listeners
+document.querySelectorAll(".step-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    switchStep(tab.dataset.stepTarget);
+  });
+});
+
+// Next / Prev Buttons in Panes
+document.querySelectorAll("[data-next-step]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    switchStep(btn.dataset.nextStep);
+  });
+});
+
+document.querySelectorAll("[data-prev-step]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    switchStep(btn.dataset.prevStep);
+  });
+});
+
+// OS Cards Click Listener
+document.querySelectorAll(".os-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    const presetKey = card.dataset.preset;
+    windowsPreset.value = presetKey;
+    applyWindowsPreset();
+  });
+});
+
+// Paste ISO URL Helper Button
+if (pasteUrlBtn) {
+  pasteUrlBtn.addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        imageUrl.value = text.trim();
+        windowsPreset.value = "custom";
+        syncOsCards("custom");
+        if (!imageName.value.trim()) {
+          imageName.value = "Windows Custom Image";
+        }
+        renderValidation();
+        const originalHtml = pasteUrlBtn.innerHTML;
+        pasteUrlBtn.textContent = "Tertempel!";
+        setTimeout(() => { pasteUrlBtn.innerHTML = originalHtml; }, 2000);
+      }
+    } catch (err) {
+      console.warn("Clipboard access failed:", err);
     }
   });
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const problems = validate();
-  if (problems.length) {
-    renderValidation();
-    return;
-  }
+// Password Generator
+if (genPasswordBtn) {
+  genPasswordBtn.addEventListener("click", generateRandomPassword);
+}
 
-  const confirmed = window.confirm(
-    "Install akan menghapus seluruh disk VPS target. Lanjutkan?"
-  );
-  if (!confirmed) return;
-
-  startButton.disabled = true;
-  liveLog.textContent = "";
-  resetWaitTimer();
-  resetProgress();
-  progressUrlValue = "";
-  rdpTargetValue = "";
-  updateGatedOutputs("idle");
-  addLog("Mengirim job install ke backend...");
-  setStatus("queued");
-
-  const response = await fetch("/api/install", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload()),
+// Copy RDP Command
+if (copyRdpBtn) {
+  copyRdpBtn.addEventListener("click", () => {
+    const textToCopy = rdpTargetValue ? `mstsc /v:${rdpTargetValue}` : `${host.value.trim()}:${rdpPort.value}`;
+    navigator.clipboard.writeText(textToCopy);
+    const originalText = copyRdpBtn.textContent;
+    copyRdpBtn.textContent = "Tersalin!";
+    setTimeout(() => { copyRdpBtn.textContent = originalText; }, 2000);
   });
+}
 
-  const result = await response.json();
-  if (!response.ok) {
-    addLog((result.problems || [result.error || "Request gagal."]).join(" "));
-    setStatus("failed");
-    startButton.disabled = false;
-    return;
-  }
+// Copy Live Log
+if (copyLogBtn) {
+  copyLogBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(liveLog.innerText);
+    const originalText = copyLogBtn.textContent;
+    copyLogBtn.textContent = "Tersalin!";
+    setTimeout(() => { copyLogBtn.textContent = originalText; }, 2000);
+  });
+}
 
-  progressUrlValue = result.progressUrl;
-  rdpTargetValue = result.rdpTarget;
-  updateGatedOutputs(currentStatus);
-  manualProgressIp.value = host.value.trim();
-  manualProgressPort.value = webPort.value;
-  connectLogs(result.jobId);
-});
-
-document.querySelector("#clear-log").addEventListener("click", () => {
-  liveLog.textContent = "";
-});
-
+// Password View Toggle
 document.querySelectorAll("[data-toggle]").forEach((button) => {
   button.addEventListener("click", () => {
     const input = document.querySelector(button.dataset.toggle);
@@ -586,6 +1135,7 @@ document.querySelectorAll("[data-toggle]").forEach((button) => {
   });
 });
 
+// Load Preset Example
 document.querySelector("#load-example").addEventListener("click", () => {
   host.value = "1.2.3.4";
   sshUsername.value = "root";
@@ -601,28 +1151,96 @@ document.querySelector("#load-example").addEventListener("click", () => {
   allowPing.checked = true;
   autoReboot.checked = true;
   renderValidation();
+  switchStep(1);
 });
 
 windowsPreset.addEventListener("change", applyWindowsPreset);
 
 imageName.addEventListener("input", () => {
   windowsPreset.value = "custom";
+  syncOsCards("custom");
 });
 
 imageUrl.addEventListener("input", () => {
   windowsPreset.value = "custom";
+  syncOsCards("custom");
 });
 
-document.querySelector("#open-progress").addEventListener("click", () => {
-  const ip = manualProgressIp.value.trim();
-  const port = manualProgressPort.value || "80";
-  if (!ip) return;
-  window.open(`http://${ip}:${port}/`, "_blank", "noopener,noreferrer");
+// Form Submit with Luxury Modal Confirm & Transition to Active Execution Dashboard
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const problems = validate();
+  if (problems.length) {
+    renderValidation();
+    switchStep(1);
+    return;
+  }
+
+  const confirmed = await showConfirmModal(host.value.trim());
+  if (!confirmed) return;
+
+  // Transition UI: Hide 4-Step Form, Show Active Execution Dashboard & Focus Monitor
+  enterExecutionView();
+
+  hasTriggeredRdpReadyModal = false;
+  startButton.disabled = true;
+  liveLog.textContent = "";
+  resetWaitTimer();
+  resetProgress();
+  progressUrlValue = "";
+  rdpTargetValue = "";
+  updateGatedOutputs("idle");
+  addLog("Mengirim job install ke backend...");
+  setStage("queued");
+
+  const response = await fetch("/api/install", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload()),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    addLog((result.problems || [result.error || "Request gagal."]).join(" "));
+    setStage("failed");
+    startButton.disabled = false;
+    return;
+  }
+
+  activeJobId = result.jobId;
+  progressUrlValue = result.progressUrl;
+  rdpTargetValue = result.rdpTarget;
+  updateGatedOutputs(currentStatus);
+  manualProgressIp.value = host.value.trim();
+  manualProgressPort.value = webPort.value;
+
+  // Save Job into Device-Local History (Isolated per Browser/Device)
+  const presetObj = windowsPresets[windowsPreset.value];
+  const osNameStr = presetObj && windowsPreset.value !== "custom" ? presetObj.imageName : (imageName.value.trim() || "Custom ISO");
+
+  addJobToHistory({
+    id: result.jobId,
+    timestamp: new Date().toISOString(),
+    host: host.value.trim(),
+    osName: osNameStr,
+    rdpUsername: rdpUsername.value.trim() || "administrator",
+    rdpPassword: rdpPassword.value || "",
+    rdpPort: Number(rdpPort.value) || 3389,
+    webPort: Number(webPort.value) || 80,
+    status: "queued",
+  });
+
+  connectLogs(result.jobId);
 });
 
 form.addEventListener("input", renderValidation);
 form.addEventListener("change", renderValidation);
+
+// Initial State Setup
 setStage("idle");
 resetProgress();
 updateGatedOutputs("idle");
 renderValidation();
+applyWindowsPreset();
+renderDeviceHistory();
+switchStep(1);

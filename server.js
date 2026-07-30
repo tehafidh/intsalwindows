@@ -378,13 +378,13 @@ function buildRemoteCommand(config) {
 
 function runInstall(job, config) {
     const conn = new Client();
-    setStatus(job, "connecting");
-    appendLog(job, `Menghubungkan SSH ke ${config.host}:${config.sshLoginPort} sebagai ${config.sshUsername}`);
+    setStatus(job, "running");
+    appendLog(job, `Menghubungkan SSH ke ${config.host}:${config.sshLoginPort} sebagai ${config.sshUsername}...`);
 
     conn
         .on("ready", () => {
             setStatus(job, "running");
-            appendLog(job, "SSH tersambung. Menjalankan installer di VPS target.");
+            appendLog(job, "SSH tersambung! Menjalankan installer di VPS target...");
             conn.exec(buildRemoteCommand(config), { pty: false }, (err, stream) => {
                 if (err) {
                     appendLog(job, `Gagal menjalankan command: ${err.message}`);
@@ -410,8 +410,18 @@ function runInstall(job, config) {
                     .stderr.on("data", (data) => appendLog(job, data.toString()));
             });
         })
+        .on("keyboard-interactive", (name, instructions, instructionsLang, prompts, finish) => {
+            appendLog(job, "Autentikasi keyboard-interactive terdeteksi, mencoba login...");
+            finish([config.sshPassword]);
+        })
         .on("error", (err) => {
-            appendLog(job, `SSH error: ${err.message}`);
+            const errText = String(err.message || err);
+            appendLog(job, `[Gagal Koneksi SSH] ${errText}`);
+            if (errText.includes("All configured authentication methods failed") || errText.includes("Authentication failed")) {
+                appendLog(job, "Gagal login: Username atau Password SSH root VPS tidak cocok.");
+            } else if (errText.includes("Timed out") || errText.includes("ETIMEDOUT") || errText.includes("ECONNREFUSED")) {
+                appendLog(job, `Gagal koneksi ke ${config.host}:${config.sshLoginPort}. Pastikan IP Address & Port SSH benar dan firewall VPS tidak memblokir.`);
+            }
             setStatus(job, "failed");
         })
         .connect({
@@ -419,8 +429,9 @@ function runInstall(job, config) {
             port: config.sshLoginPort,
             username: config.sshUsername,
             password: config.sshPassword,
-            readyTimeout: 30000,
-            keepaliveInterval: 10000,
+            tryKeyboard: true,
+            readyTimeout: 12000,
+            keepaliveInterval: 5000,
         });
 }
 

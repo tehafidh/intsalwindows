@@ -32,7 +32,7 @@ npm install --production
 - Startup file: `server.js`
 - Port: `8081`
 - Start command: `npm start`
-- Environment variable: `PUBLIC_SITE_URL=https://domain-kamu.com`
+- Environment variable: `PUBLIC_SITE_URL=https://web.buyrdp.biz.id`
 
 Reverse proxy domain ke:
 

@@ -47,13 +47,13 @@ Aplikasi sudah menyiapkan title, description, Open Graph, manifest,
 Saat deploy di aaPanel, isi domain publik agar sitemap memakai URL yang benar:
 
 ```bash
-PUBLIC_SITE_URL="https://domain-kamu.com" npm start
+PUBLIC_SITE_URL="https://web.buyrdp.biz.id" npm start
 ```
 
 Di aaPanel Node.js Project, masukkan environment variable:
 
 ```text
-PUBLIC_SITE_URL=https://domain-kamu.com
+PUBLIC_SITE_URL=https://web.buyrdp.biz.id
 ```
 
 Jika memakai VS Code, buka file `DEPLOY-VSCODE.md` atau jalankan task

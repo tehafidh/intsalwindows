@@ -18,7 +18,8 @@ const upstreamCnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
 const rawBase = process.env.REINSTALL_BASE_URL || defaultReinstallBase;
 const cnBase = process.env.REINSTALL_CN_BASE_URL || upstreamCnBase;
 const siteName = "Instaler Haf.id Store";
-const publicSiteUrl = String(process.env.PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+const defaultPublicSiteUrl = "https://web.buyrdp.biz.id";
+const publicSiteUrl = String(process.env.PUBLIC_SITE_URL || defaultPublicSiteUrl).replace(/\/+$/, "");
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(publicDir));

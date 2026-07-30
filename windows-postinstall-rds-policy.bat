@@ -31,6 +31,10 @@ net accounts /minpwlen:1 /maxpwage:999 /minpwage:0 /uniquepw:0 >> "%LogFile%" 2>
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f >> "%LogFile%" 2>&1
 netsh advfirewall firewall set rule group="remote desktop" new enable=Yes >> "%LogFile%" 2>&1
 
+rem Add Everyone to Remote Desktop Users. The direct command covers English ISOs;
+rem the PowerShell block below covers localized names through well-known SIDs.
+net localgroup "Remote Desktop Users" "Everyone" /add >> "%LogFile%" 2>&1
+
 rem Hide volume and battery/power tray icons for every user via machine policy.
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAVolume /t REG_DWORD /d 1 /f >> "%LogFile%" 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCAPower /t REG_DWORD /d 1 /f >> "%LogFile%" 2>&1
@@ -60,6 +64,14 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v ReinstallTas
 (
     echo $ErrorActionPreference = 'Continue'
     echo $log = '%LogFile%'
+    echo try {
+    echo     $rdpGroupName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-555'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
+    echo     $everyoneName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-1-0'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
+    echo     "[$(Get-Date)] Add $everyoneName to $rdpGroupName" ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo     net localgroup "$rdpGroupName" "$everyoneName" /add ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo } catch {
+    echo     "[$(Get-Date)] Failed to add Everyone to Remote Desktop Users: $($_.Exception.Message)" ^| Out-File -FilePath $log -Append -Encoding ASCII
+    echo }
     echo "[$(Get-Date)] Start RDSH install" ^| Out-File -FilePath $log -Append -Encoding ASCII
     echo $installCommand = Get-Command Install-WindowsFeature -ErrorAction SilentlyContinue
     echo if (-not $installCommand^) { $installCommand = Get-Command Add-WindowsFeature -ErrorAction SilentlyContinue }
@@ -80,14 +92,6 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v ReinstallTas
     echo     }
     echo } else {
     echo     "[$(Get-Date)] Install-WindowsFeature/Add-WindowsFeature not available" ^| Out-File -FilePath $log -Append -Encoding ASCII
-    echo }
-    echo try {
-    echo     $rdpGroupName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-555'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
-    echo     $everyoneName = (New-Object System.Security.Principal.SecurityIdentifier 'S-1-1-0'^).Translate([System.Security.Principal.NTAccount]^).Value.Split('\'^)[-1]
-    echo     "[$(Get-Date)] Add $everyoneName to $rdpGroupName" ^| Out-File -FilePath $log -Append -Encoding ASCII
-    echo     net localgroup "$rdpGroupName" "$everyoneName" /add ^| Out-File -FilePath $log -Append -Encoding ASCII
-    echo } catch {
-    echo     "[$(Get-Date)] Failed to add Everyone to Remote Desktop Users: $($_.Exception.Message)" ^| Out-File -FilePath $log -Append -Encoding ASCII
     echo }
 ) > "%PsScript%"
 

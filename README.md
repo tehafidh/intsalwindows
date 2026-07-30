@@ -33,6 +33,9 @@ Buka:
 http://localhost:8080
 ```
 
+Jika memakai VS Code, buka file `DEPLOY-VSCODE.md` atau jalankan task
+`Installer: start web`.
+
 ## Cara Pakai
 
 1. Isi `IP / domain VPS`.

@@ -1,0 +1,51 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Installer: npm install",
+            "type": "shell",
+            "command": "npm install",
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Installer: start web",
+            "type": "shell",
+            "command": "npm start",
+            "options": {
+                "env": {
+                    "PORT": "8081"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Windows VPS Web Installer",
+                    "endsPattern": "Windows VPS Web Installer jalan di"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Installer: check syntax",
+            "type": "shell",
+            "command": "npm run check",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "GitHub: push main",
+            "type": "shell",
+            "command": "git push -u origin main",
+            "problemMatcher": []
+        }
+    ]
+}

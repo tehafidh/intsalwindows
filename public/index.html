@@ -173,12 +173,39 @@
         </form>
 
         <aside class="panel output-panel">
-          <div class="panel-head">
+          <div class="panel-head progress-head">
             <div>
               <p class="eyebrow">Progress</p>
               <h2 id="job-title">Belum mulai</h2>
             </div>
             <span id="job-status" class="pill">idle</span>
+          </div>
+
+          <div class="stage-card" id="stage-card">
+            <div class="stage-orb" aria-hidden="true"></div>
+            <div>
+              <span id="stage-label">Menunggu konfigurasi</span>
+              <strong id="wait-timer">00:00</strong>
+            </div>
+          </div>
+
+          <div class="step-rail" aria-label="Tahap install">
+            <div class="step active" data-step="ssh">
+              <span></span>
+              <strong>SSH</strong>
+            </div>
+            <div class="step" data-step="installer">
+              <span></span>
+              <strong>Installer</strong>
+            </div>
+            <div class="step" data-step="windows">
+              <span></span>
+              <strong>Windows</strong>
+            </div>
+            <div class="step" data-step="rdp">
+              <span></span>
+              <strong>RDP</strong>
+            </div>
           </div>
 
           <div class="result-grid">
@@ -193,8 +220,11 @@
           </div>
 
           <div class="code-block log-block">
-            <div class="code-title">Live log</div>
-            <pre id="live-log">Menunggu install dimulai...</pre>
+            <div class="code-title">
+              <span>Live log</span>
+              <button class="log-action" type="button" id="clear-log">Clear</button>
+            </div>
+            <div id="live-log" class="live-log">Menunggu install dimulai...</div>
           </div>
 
           <div class="manual-progress">

@@ -20,6 +20,9 @@ const validation = document.querySelector("#validation");
 const liveLog = document.querySelector("#live-log");
 const jobTitle = document.querySelector("#job-title");
 const jobStatus = document.querySelector("#job-status");
+const stageCard = document.querySelector("#stage-card");
+const stageLabel = document.querySelector("#stage-label");
+const waitTimer = document.querySelector("#wait-timer");
 const progressUrl = document.querySelector("#progress-url");
 const rdpTarget = document.querySelector("#rdp-target");
 const manualProgressIp = document.querySelector("#manual-progress-ip");
@@ -27,6 +30,11 @@ const manualProgressPort = document.querySelector("#manual-progress-port");
 const startButton = document.querySelector("#start-install");
 
 let ws = null;
+let waitStartedAt = null;
+let timerHandle = null;
+
+const waitingStatuses = new Set(["rebooting", "remote-progress", "windows-setup"]);
+const terminalStatuses = new Set(["rdp-ready", "failed", "remote-error", "timeout", "finished"]);
 
 function isPort(input) {
   const value = Number(input.value);
@@ -121,15 +129,118 @@ function addLog(message) {
   if (liveLog.textContent === "Menunggu install dimulai...") {
     liveLog.textContent = "";
   }
-  liveLog.textContent += `${message}\n`;
+  const row = document.createElement("div");
+  row.className = `log-row ${classifyLog(message)}`;
+  row.textContent = message;
+  liveLog.appendChild(row);
   if (atBottom) {
     liveLog.scrollTop = liveLog.scrollHeight;
+  }
+}
+
+function classifyLog(message) {
+  if (/error|failed|gagal|timeout/i.test(message)) return "is-error";
+  if (/done|berhasil|ready|sudah terbuka/i.test(message)) return "is-ok";
+  if (/menunggu|waiting|reboot|windows setup|tidak bisa diakses/i.test(message)) return "is-wait";
+  if (/ssh|menghubungkan|connected|tersambung/i.test(message)) return "is-info";
+  return "is-muted";
+}
+
+function formatElapsed(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateTimer() {
+  if (!waitStartedAt) {
+    waitTimer.textContent = "00:00";
+    return;
+  }
+  waitTimer.textContent = formatElapsed(Date.now() - waitStartedAt);
+}
+
+function startWaitTimer() {
+  if (!waitStartedAt) {
+    waitStartedAt = Date.now();
+  }
+  if (!timerHandle) {
+    timerHandle = window.setInterval(updateTimer, 1000);
+  }
+  updateTimer();
+}
+
+function stopWaitTimer() {
+  if (timerHandle) {
+    window.clearInterval(timerHandle);
+    timerHandle = null;
+  }
+  updateTimer();
+}
+
+function resetWaitTimer() {
+  waitStartedAt = null;
+  stopWaitTimer();
+}
+
+function setActiveStep(status) {
+  const stepByStatus = {
+    queued: "ssh",
+    connecting: "ssh",
+    running: "installer",
+    rebooting: "windows",
+    "remote-progress": "installer",
+    "windows-setup": "windows",
+    "rdp-ready": "rdp",
+    "remote-error": "windows",
+    timeout: "windows",
+    failed: "ssh",
+  };
+  const active = stepByStatus[status] || "ssh";
+  document.querySelectorAll(".step").forEach((step) => {
+    const isActive = step.dataset.step === active;
+    step.classList.toggle("active", isActive);
+    step.classList.toggle("complete", isStepComplete(step.dataset.step, active, status));
+  });
+}
+
+function isStepComplete(step, active, status) {
+  const order = ["ssh", "installer", "windows", "rdp"];
+  if (status === "rdp-ready") return true;
+  return order.indexOf(step) < order.indexOf(active);
+}
+
+function setStage(status) {
+  const labels = {
+    idle: "Menunggu konfigurasi",
+    queued: "Job dibuat, menyiapkan koneksi",
+    connecting: "Menghubungkan ke VPS",
+    running: "Menjalankan installer awal",
+    rebooting: "VPS reboot, menunggu Windows Setup",
+    "remote-progress": "Installer remote masih berjalan",
+    "windows-setup": "Web progress disconnect, menunggu RDP siap",
+    "rdp-ready": "RDP siap digunakan",
+    "remote-error": "Installer remote melaporkan error",
+    timeout: "Monitor selesai karena timeout",
+    failed: "Job gagal",
+    finished: "Command selesai",
+  };
+  stageLabel.textContent = labels[status] || "Memantau proses";
+  stageCard.dataset.status = status;
+  setActiveStep(status);
+
+  if (waitingStatuses.has(status)) {
+    startWaitTimer();
+  } else if (terminalStatuses.has(status)) {
+    stopWaitTimer();
   }
 }
 
 function setStatus(status) {
   jobStatus.textContent = status;
   jobStatus.dataset.status = status;
+  setStage(status);
   if (status === "running") {
     jobTitle.textContent = "Installer sedang berjalan";
   } else if (status === "connecting") {
@@ -209,7 +320,9 @@ form.addEventListener("submit", async (event) => {
   if (!confirmed) return;
 
   startButton.disabled = true;
-  liveLog.textContent = "Mengirim job install ke backend...\n";
+  liveLog.textContent = "";
+  resetWaitTimer();
+  addLog("Mengirim job install ke backend...");
   setStatus("queued");
 
   const response = await fetch("/api/install", {
@@ -233,6 +346,10 @@ form.addEventListener("submit", async (event) => {
   manualProgressIp.value = host.value.trim();
   manualProgressPort.value = webPort.value;
   connectLogs(result.jobId);
+});
+
+document.querySelector("#clear-log").addEventListener("click", () => {
+  liveLog.textContent = "";
 });
 
 document.querySelectorAll("[data-toggle]").forEach((button) => {
@@ -270,4 +387,5 @@ document.querySelector("#open-progress").addEventListener("click", () => {
 
 form.addEventListener("input", renderValidation);
 form.addEventListener("change", renderValidation);
+setStage("idle");
 renderValidation();

@@ -14,6 +14,7 @@ const rdpPort = document.querySelector("#rdp-port");
 const installSshPort = document.querySelector("#install-ssh-port");
 const webPort = document.querySelector("#web-port");
 const allowPing = document.querySelector("#allow-ping");
+const autoReboot = document.querySelector("#auto-reboot");
 const cnMirror = document.querySelector("#cn-mirror");
 const validation = document.querySelector("#validation");
 const liveLog = document.querySelector("#live-log");
@@ -155,6 +156,7 @@ function payload() {
     installSshPort: Number(installSshPort.value),
     webPort: Number(webPort.value),
     allowPing: allowPing.checked,
+    autoReboot: autoReboot.checked,
     cnMirror: cnMirror.checked,
   };
 }
@@ -242,6 +244,7 @@ document.querySelector("#load-example").addEventListener("click", () => {
   installSshPort.value = "22";
   webPort.value = "80";
   allowPing.checked = true;
+  autoReboot.checked = true;
   renderValidation();
 });
 

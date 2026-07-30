@@ -19,6 +19,7 @@ menampilkan progress install secara live.
 - Progress live dari output SSH.
 - Link progress bawaan script, contoh `http://IP-VPS:80/`.
 - Tombol buka progress manual berdasarkan IP dan port.
+- Auto reboot setelah setup reinstall sukses.
 
 ## Cara Menjalankan Di Komputer Lokal
 

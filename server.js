@@ -114,6 +114,7 @@ function validateRequest(body) {
         installSshPort: normalizePort(body.installSshPort, 22),
         webPort: normalizePort(body.webPort, 80),
         allowPing: Boolean(body.allowPing),
+        autoReboot: body.autoReboot !== false,
         cnMirror: Boolean(body.cnMirror),
     };
 
@@ -171,14 +172,24 @@ function buildRemoteCommand(config) {
         args.push("--allow-ping");
     }
 
-    return [
+    const lines = [
         "set -e",
         "cd /root",
         `export RDP_PASSWORD=${bashQuote(config.rdpPassword)}`,
         `curl -fsSLO ${bashQuote(`${base}/reinstall.sh`)} || wget -O reinstall.sh ${bashQuote(`${base}/reinstall.sh`)}`,
         "chmod +x reinstall.sh",
         `bash reinstall.sh ${args.join(" ")}`,
-    ].join("\n");
+    ];
+
+    if (config.autoReboot) {
+        lines.push("echo 'AUTO_REBOOT: setup sukses, VPS akan reboot untuk mulai install.'");
+        lines.push("sync");
+        lines.push("nohup sh -c 'sleep 3; /sbin/reboot || reboot || shutdown -r now' >/dev/null 2>&1 &");
+    } else {
+        lines.push("echo 'AUTO_REBOOT: dimatikan. Reboot manual diperlukan untuk mulai install.'");
+    }
+
+    return lines.join("\n");
 }
 
 function runInstall(job, config) {
@@ -190,7 +201,7 @@ function runInstall(job, config) {
         .on("ready", () => {
             setStatus(job, "running");
             appendLog(job, "SSH tersambung. Menjalankan installer di VPS target.");
-            conn.exec(buildRemoteCommand(config), { pty: true }, (err, stream) => {
+            conn.exec(buildRemoteCommand(config), { pty: false }, (err, stream) => {
                 if (err) {
                     appendLog(job, `Gagal menjalankan command: ${err.message}`);
                     setStatus(job, "failed");

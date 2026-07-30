@@ -17,6 +17,7 @@ menampilkan progress install secara live.
 - Custom port SSH log dan web progress.
 - Progress live dari output SSH.
 - Link progress bawaan script, contoh `http://IP-VPS:80/`.
+- Auto reboot setelah setup reinstall sukses.
 
 ## Menjalankan
 

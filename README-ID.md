@@ -142,3 +142,9 @@ https://download.microsoft.com/download/6/2/A/62A76ABB-9990-4EFC-A4FE-C7D698DAEB
 
 Itu adalah Windows Server 2012 R2 Evaluation. Versi evaluation punya masa pakai
 terbatas dan tidak disarankan untuk produksi jangka panjang.
+
+Untuk ISO Windows Server 2012 R2 di atas, nama image yang benar adalah:
+
+```text
+Windows Server 2012 R2 SERVERDATACENTER
+```

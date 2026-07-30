@@ -99,14 +99,16 @@ function setStatus(job, status) {
 }
 
 function validateRequest(body) {
+    const mode = String(body.mode || "iso");
+    const imageName = normalizeWindowsImageName(String(body.imageName || "").trim());
     const config = {
         host: String(body.host || "").trim(),
         sshUsername: String(body.sshUsername || "root").trim(),
         sshPassword: String(body.sshPassword || ""),
         sshLoginPort: normalizePort(body.sshLoginPort, 22),
         provider: String(body.provider || "other"),
-        mode: String(body.mode || "iso"),
-        imageName: String(body.imageName || "").trim(),
+        mode,
+        imageName,
         imageUrl: String(body.imageUrl || "").trim(),
         username: String(body.username || "administrator").trim(),
         rdpPassword: String(body.rdpPassword || ""),
@@ -148,6 +150,29 @@ function validateRequest(body) {
     }
 
     return { config, problems };
+}
+
+function normalizeWindowsImageName(value) {
+    const normalized = value.toLowerCase().replace(/\s+/g, " ").trim();
+    const aliases = new Map([
+        [
+            "windows server 2012 r2 datacenter evaluation",
+            "Windows Server 2012 R2 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2012 r2 datacenter",
+            "Windows Server 2012 R2 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2012 r2 standard evaluation",
+            "Windows Server 2012 R2 SERVERSTANDARD",
+        ],
+        [
+            "windows server 2012 r2 standard",
+            "Windows Server 2012 R2 SERVERSTANDARD",
+        ],
+    ]);
+    return aliases.get(normalized) || value;
 }
 
 function buildRemoteCommand(config) {

@@ -46,7 +46,7 @@ function providerNotice() {
     return "DigitalOcean tidak support Windows resmi. Pastikan console recovery tersedia.";
   }
   if (provider.value === "tencent") {
-    return "Tencent Cloud cocok. Buka security group untuk SSH, web progress, dan RDP.";
+    return "Tencent Cloud cocok. Installer default download script dari repo GitHub kamu.";
   }
   return "Pastikan provider mendukung boot installer dan menyediakan VNC/console.";
 }

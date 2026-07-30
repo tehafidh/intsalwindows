@@ -30,11 +30,26 @@ npm start
 Buka:
 
 ```text
-http://localhost:8080
+http://localhost:8081
 ```
 
 Jika memakai VS Code, buka file `DEPLOY-VSCODE.md` atau jalankan task
 `Installer: start web`.
+
+## Sumber Script Reinstall
+
+Secara default backend akan download script dari repo ini:
+
+```text
+https://raw.githubusercontent.com/tehafidh/intsalwindows/main
+```
+
+Kalau ingin memakai source lain, jalankan dengan environment variable:
+
+```powershell
+$env:REINSTALL_BASE_URL="https://raw.githubusercontent.com/USERNAME/REPO/main"
+npm start
+```
 
 ## Cara Pakai
 

@@ -25,6 +25,12 @@ Di VS Code:
 http://localhost:8081
 ```
 
+Installer default memakai source script dari:
+
+```text
+https://raw.githubusercontent.com/tehafidh/intsalwindows/main
+```
+
 Untuk cek syntax:
 
 1. Tekan `Ctrl+Shift+P`.

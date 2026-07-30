@@ -32,7 +32,7 @@ npm start
 Buka:
 
 ```text
-http://localhost:8080
+http://localhost:8081
 ```
 
 ## Cara Pakai
@@ -73,6 +73,25 @@ Di firewall/security group provider, buka minimal:
 
 Untuk Tencent Cloud, cek bagian Security Group CVM.
 Untuk DigitalOcean, cek Cloud Firewall jika digunakan.
+
+## Sumber Script Reinstall
+
+Secara default backend download `reinstall.sh` dan file pendukung dari repo ini:
+
+```text
+https://raw.githubusercontent.com/tehafidh/intsalwindows/main
+```
+
+Kalau kamu edit `reinstall.sh`, `windows.xml`, atau file pendukung lain di repo
+GitHub ini, installer akan memakai versi terbaru dari repo kamu setelah file
+tersebut dipush ke branch `main`.
+
+Kalau ingin memakai source lain:
+
+```powershell
+$env:REINSTALL_BASE_URL="https://raw.githubusercontent.com/USERNAME/REPO/main"
+npm start
+```
 
 ## Catatan Provider
 

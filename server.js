@@ -11,8 +11,11 @@ const wss = new WebSocketServer({ noServer: true });
 const jobs = new Map();
 
 const publicDir = path.join(__dirname, "public");
-const rawBase = "https://raw.githubusercontent.com/bin456789/reinstall/main";
-const cnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
+const defaultReinstallBase =
+    "https://raw.githubusercontent.com/tehafidh/intsalwindows/main";
+const upstreamCnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
+const rawBase = process.env.REINSTALL_BASE_URL || defaultReinstallBase;
+const cnBase = process.env.REINSTALL_CN_BASE_URL || upstreamCnBase;
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(publicDir));
@@ -273,7 +276,7 @@ server.on("upgrade", (request, socket, head) => {
     });
 });
 
-const port = normalizePort(process.env.PORT, 8080);
+const port = normalizePort(process.env.PORT, 8081);
 server.listen(port, () => {
     console.log(`Windows VPS Web Installer jalan di http://localhost:${port}`);
 });

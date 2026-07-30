@@ -23,6 +23,10 @@ const jobStatus = document.querySelector("#job-status");
 const stageCard = document.querySelector("#stage-card");
 const stageLabel = document.querySelector("#stage-label");
 const waitTimer = document.querySelector("#wait-timer");
+const progressLabel = document.querySelector("#progress-label");
+const progressPercent = document.querySelector("#progress-percent");
+const progressFill = document.querySelector("#progress-fill");
+const progressDetail = document.querySelector("#progress-detail");
 const progressUrl = document.querySelector("#progress-url");
 const rdpTarget = document.querySelector("#rdp-target");
 const manualProgressIp = document.querySelector("#manual-progress-ip");
@@ -32,6 +36,10 @@ const startButton = document.querySelector("#start-install");
 let ws = null;
 let waitStartedAt = null;
 let timerHandle = null;
+let currentProgress = 0;
+let currentStatus = "idle";
+let lastProgressBucket = -1;
+let lastProgressTopic = "";
 
 const waitingStatuses = new Set(["rebooting", "remote-progress", "windows-setup"]);
 const terminalStatuses = new Set(["rdp-ready", "failed", "remote-error", "timeout", "finished"]);
@@ -123,15 +131,127 @@ function renderValidation() {
   }
 }
 
+function splitLogPrefix(message) {
+  const match = message.match(/^(\[[^\]]+\]\s*)(.*)$/);
+  return {
+    prefix: match ? match[1] : "",
+    body: match ? match[2] : message,
+  };
+}
+
+function extractLogPercent(message) {
+  const matches = [...message.matchAll(/\((\d{1,3})%\)|\b(\d{1,3})%\b/g)];
+  if (!matches.length) return null;
+  const value = Number(matches[matches.length - 1][1] || matches[matches.length - 1][2]);
+  if (!Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, value));
+}
+
+function progressTopic(message) {
+  if (/calculating integrity table/i.test(message)) return "Verifikasi WIM";
+  if (/extracting|apply|wim|image/i.test(message)) return "Menulis image Windows";
+  if (/download|aria2|wget|curl|iso/i.test(message)) return "Download image";
+  if (/installing|apk|package|grub|boot/i.test(message)) return "Menyiapkan boot installer";
+  return "Progress installer";
+}
+
+function mapInstallProgress(percent, message) {
+  if (/download|aria2|wget|curl/i.test(message)) {
+    return Math.round(12 + percent * 0.24);
+  }
+  if (/calculating integrity table|wim|extracting|apply|image/i.test(message)) {
+    return Math.round(32 + percent * 0.56);
+  }
+  return Math.min(92, Math.round(18 + percent * 0.7));
+}
+
+function setProgress(percent, label, detail, force = false) {
+  const normalized = Math.min(100, Math.max(0, Math.round(percent)));
+  if (!force && normalized < currentProgress) {
+    return;
+  }
+  currentProgress = normalized;
+  progressLabel.textContent = label;
+  progressPercent.textContent = `${normalized}%`;
+  progressFill.style.width = `${normalized}%`;
+  progressDetail.textContent = detail;
+}
+
+function resetProgress() {
+  currentProgress = 0;
+  lastProgressBucket = -1;
+  lastProgressTopic = "";
+  setProgress(0, "Progress instalasi", "Belum ada proses berjalan.", true);
+}
+
+function applyStatusProgress(status) {
+  const target = rdpTarget.textContent && rdpTarget.textContent !== "-" ? rdpTarget.textContent : "IP:port RDP";
+  const progressByStatus = {
+    queued: [3, "Menyiapkan job", "Job sudah masuk ke backend."],
+    connecting: [8, "Menghubungkan SSH", "Backend sedang login ke VPS target."],
+    running: [16, "Installer berjalan", "Script reinstall sedang diproses di VPS."],
+    rebooting: [91, "Menunggu reboot", "Installer awal selesai, VPS sedang reboot."],
+    "remote-progress": [78, "Progress remote aktif", "Web progress VPS masih mengirim status installer."],
+    "windows-setup": [95, "Waiting RDP Ready", `Menunggu ${target} siap menerima koneksi RDP.`],
+    "rdp-ready": [100, "Windows Ready", `${target} sudah siap digunakan.`],
+    failed: [currentProgress, "Install gagal", "Cek log terakhir untuk penyebab error."],
+    "remote-error": [currentProgress, "Installer remote error", "Buka web progress VPS atau console provider untuk detail."],
+    timeout: [currentProgress, "Monitor timeout", "RDP belum terdeteksi terbuka dalam batas waktu monitor."],
+    finished: [currentProgress, "Command selesai", "Command SSH selesai, cek status remote untuk kelanjutan."],
+  };
+  const progress = progressByStatus[status];
+  if (progress) {
+    setProgress(...progress);
+  }
+}
+
+function compactProgressLog(message) {
+  const percent = extractLogPercent(message);
+  if (percent === null) return { message, skip: false };
+
+  const topic = progressTopic(message);
+  setProgress(
+    mapInstallProgress(percent, message),
+    topic,
+    `${topic}: ${percent}% dari proses remote.`,
+  );
+
+  const isNoisy =
+    /calculating integrity table|mib of|archiving file data|extracting|download|aria2|^\s*#/i.test(message);
+  if (!isNoisy) return { message, skip: false };
+
+  const bucket = percent === 100 ? 100 : Math.floor(percent / 10) * 10;
+  const shouldShow = topic !== lastProgressTopic || bucket > lastProgressBucket || percent === 100;
+  if (!shouldShow) return { message, skip: true };
+
+  lastProgressBucket = bucket;
+  lastProgressTopic = topic;
+  const { prefix } = splitLogPrefix(message);
+  return {
+    message: `${prefix}${topic}: ${percent}%`,
+    skip: false,
+  };
+}
+
+function applyStatusFromLog(message) {
+  if (terminalStatuses.has(currentStatus)) return;
+  if (/websocket disconnected|installation finished|(?:^\[[^\]]+\]\s*)?\*\*\*\*\*\s*done/i.test(message)) {
+    setStatus("windows-setup");
+  }
+}
+
 function addLog(message) {
+  applyStatusFromLog(message);
+  const compacted = compactProgressLog(message);
+  if (compacted.skip) return;
   const atBottom =
     Math.ceil(liveLog.scrollTop + liveLog.clientHeight) >= liveLog.scrollHeight;
   if (liveLog.textContent === "Menunggu install dimulai...") {
     liveLog.textContent = "";
   }
   const row = document.createElement("div");
-  row.className = `log-row ${classifyLog(message)}`;
-  row.textContent = message;
+  row.className = `log-row ${classifyLog(compacted.message)}`;
+  row.textContent = compacted.message;
   liveLog.appendChild(row);
   if (atBottom) {
     liveLog.scrollTop = liveLog.scrollHeight;
@@ -219,8 +339,8 @@ function setStage(status) {
     running: "Menjalankan installer awal",
     rebooting: "VPS reboot, menunggu Windows Setup",
     "remote-progress": "Installer remote masih berjalan",
-    "windows-setup": "Web progress disconnect, menunggu RDP siap",
-    "rdp-ready": "RDP siap digunakan",
+    "windows-setup": "Waiting RDP Ready",
+    "rdp-ready": "Windows Ready",
     "remote-error": "Installer remote melaporkan error",
     timeout: "Monitor selesai karena timeout",
     failed: "Job gagal",
@@ -238,9 +358,11 @@ function setStage(status) {
 }
 
 function setStatus(status) {
+  currentStatus = status;
   jobStatus.textContent = status;
   jobStatus.dataset.status = status;
   setStage(status);
+  applyStatusProgress(status);
   if (status === "running") {
     jobTitle.textContent = "Installer sedang berjalan";
   } else if (status === "connecting") {
@@ -250,9 +372,9 @@ function setStatus(status) {
   } else if (status === "remote-progress") {
     jobTitle.textContent = "Installer sedang diproses";
   } else if (status === "windows-setup") {
-    jobTitle.textContent = "Menunggu Windows siap";
+    jobTitle.textContent = "Waiting RDP Ready";
   } else if (status === "rdp-ready") {
-    jobTitle.textContent = "RDP sudah siap";
+    jobTitle.textContent = "Windows Ready";
   } else if (status === "remote-error") {
     jobTitle.textContent = "Installer remote error";
   } else if (status === "timeout") {
@@ -303,7 +425,12 @@ function connectLogs(jobId) {
       addLog(`[${data.entry.time}] ${data.entry.message}`);
     }
   });
-  ws.addEventListener("close", () => addLog("WebSocket progress terputus."));
+  ws.addEventListener("close", () => {
+    addLog("WebSocket disconnected. Waiting RDP Ready...");
+    if (!terminalStatuses.has(currentStatus)) {
+      setStatus("windows-setup");
+    }
+  });
 }
 
 form.addEventListener("submit", async (event) => {
@@ -322,6 +449,7 @@ form.addEventListener("submit", async (event) => {
   startButton.disabled = true;
   liveLog.textContent = "";
   resetWaitTimer();
+  resetProgress();
   addLog("Mengirim job install ke backend...");
   setStatus("queued");
 
@@ -388,4 +516,5 @@ document.querySelector("#open-progress").addEventListener("click", () => {
 form.addEventListener("input", renderValidation);
 form.addEventListener("change", renderValidation);
 setStage("idle");
+resetProgress();
 renderValidation();

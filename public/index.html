@@ -12,13 +12,28 @@
   </head>
   <body>
     <main class="shell">
+      <nav class="topbar" aria-label="Navigasi utama">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <strong>Installer RDP</strong>
+        </div>
+        <div class="toplinks" aria-hidden="true">
+          <span>Dashboard</span>
+          <span>ISO / Image</span>
+          <span>Akun</span>
+        </div>
+        <div class="operator">
+          <span>A</span>
+          <strong>administrator</strong>
+        </div>
+      </nav>
+
       <section class="hero">
         <div>
-          <p class="eyebrow">Direct Windows VPS installer</p>
-          <h1>Masukkan IP VPS, klik install, pantau progress dari web.</h1>
+          <p class="eyebrow">Installer RDP Control Dashboard</p>
+          <h1>Installer RDP</h1>
           <p class="lead">
-            Backend lokal akan SSH ke VPS, menjalankan script reinstall, lalu
-            menampilkan log live. Password tidak disimpan ke file.
+            DigitalOcean, Tencent, upload ISO / image, dan VPS KVM sejenis dalam satu panel.
           </p>
         </div>
         <div class="status-panel" aria-label="Status provider">
@@ -36,9 +51,10 @@
       </section>
 
       <section class="workspace">
-        <form id="installer-form" class="panel" autocomplete="off">
+        <form id="installer-form" class="panel setup-panel" autocomplete="off">
           <div class="panel-head">
             <div>
+              <span class="section-number">1</span>
               <p class="eyebrow">Target VPS</p>
               <h2>Akses SSH</h2>
             </div>
@@ -74,6 +90,7 @@
 
           <div class="panel-head">
             <div>
+              <span class="section-number">2</span>
               <p class="eyebrow">Windows</p>
               <h2>Install target</h2>
             </div>
@@ -175,6 +192,7 @@
         <aside class="panel output-panel">
           <div class="panel-head progress-head">
             <div>
+              <span class="section-number">3</span>
               <p class="eyebrow">Progress</p>
               <h2 id="job-title">Belum mulai</h2>
             </div>
@@ -187,6 +205,17 @@
               <span id="stage-label">Menunggu konfigurasi</span>
               <strong id="wait-timer">00:00</strong>
             </div>
+          </div>
+
+          <div class="progress-meter" id="progress-meter">
+            <div class="meter-head">
+              <span id="progress-label">Progress instalasi</span>
+              <strong id="progress-percent">0%</strong>
+            </div>
+            <div class="meter-track" aria-hidden="true">
+              <span id="progress-fill"></span>
+            </div>
+            <p id="progress-detail">Belum ada proses berjalan.</p>
           </div>
 
           <div class="step-rail" aria-label="Tahap install">
@@ -210,7 +239,7 @@
 
           <div class="result-grid">
             <a id="progress-url" class="result-tile disabled" href="#" target="_blank" rel="noreferrer">
-              <span>Web progress VPS</span>
+              <span>Web Progress VPS</span>
               <strong>-</strong>
             </a>
             <div class="result-tile">

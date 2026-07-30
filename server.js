@@ -286,6 +286,50 @@ function normalizeWindowsImageName(value) {
             "windows server 2012 r2 standard",
             "Windows Server 2012 R2 SERVERSTANDARD",
         ],
+        [
+            "windows server 2016 datacenter evaluation",
+            "Windows Server 2016 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2016 datacenter",
+            "Windows Server 2016 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2019 datacenter evaluation",
+            "Windows Server 2019 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2019 datacenter",
+            "Windows Server 2019 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2022 datacenter evaluation",
+            "Windows Server 2022 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2022 datacenter",
+            "Windows Server 2022 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2025 datacenter evaluation",
+            "Windows Server 2025 SERVERDATACENTER",
+        ],
+        [
+            "windows server 2025 datacenter",
+            "Windows Server 2025 SERVERDATACENTER",
+        ],
+        [
+            "windows 11 enterprise eval",
+            "Windows 11 Enterprise Evaluation",
+        ],
+        [
+            "windows 11 enterprise evaluation",
+            "Windows 11 Enterprise Evaluation",
+        ],
+        [
+            "windows 11 enterprise",
+            "Windows 11 Enterprise Evaluation",
+        ],
     ]);
     return aliases.get(normalized) || value;
 }

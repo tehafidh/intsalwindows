@@ -11,6 +11,7 @@ menampilkan progress install secara live.
 ## Fitur
 
 - Install Windows dari ISO resmi Microsoft.
+- Preset ISO Windows Server 2012 R2, 2016, 2019, 2022, 2025, dan Windows 11.
 - Mode DD untuk image Windows `raw` atau `vhd`.
 - Custom username RDP.
 - Custom password RDP.
@@ -49,11 +50,12 @@ http://localhost:8081
 5. Pilih mode install:
    - `Windows ISO langsung` untuk link ISO.
    - `DD image Windows RAW/VHD` untuk image siap DD.
-6. Isi link ISO/image.
-7. Isi username RDP.
-8. Isi password RDP baru.
-9. Isi port RDP, misalnya `3389` atau `3390`.
-10. Klik `Mulai install sekarang`.
+6. Pilih preset Windows, atau pilih `Custom ISO / image name`.
+7. Cek `Nama image Windows` dan `Link ISO / image`.
+8. Isi username RDP.
+9. Isi password RDP baru.
+10. Isi port RDP, misalnya `3389` atau `3390`.
+11. Klik `Mulai install sekarang`.
 
 Saat VPS reboot, koneksi SSH bisa putus. Itu normal. Lanjut cek progress lewat
 link `Web progress VPS` atau buka manual:
@@ -141,19 +143,18 @@ git push -u origin main
   pembatasan akses.
 - Jangan masukkan password VPS ke website yang tidak kamu jalankan sendiri.
 
-## ISO Contoh
+## Preset ISO
 
-ISO yang sudah terisi di form:
+Form sudah menyediakan preset berikut. Saat dipilih, `Nama image Windows` dan
+`Link ISO / image` otomatis terisi.
 
-```text
-https://download.microsoft.com/download/6/2/A/62A76ABB-9990-4EFC-A4FE-C7D698DAEB96/9600.17050.WINBLUE_REFRESH.140317-1640_X64FRE_SERVER_EVAL_EN-US-IR3_SSS_X64FREE_EN-US_DV9.ISO
-```
+- Windows Server 2012 R2: `Windows Server 2012 R2 SERVERDATACENTER`
+- Windows Server 2016: `Windows Server 2016 SERVERDATACENTER`
+- Windows Server 2019: `Windows Server 2019 SERVERDATACENTER`
+- Windows Server 2022: `Windows Server 2022 SERVERDATACENTER`
+- Windows Server 2025: `Windows Server 2025 SERVERDATACENTER`
+- Windows 11: `Windows 11 Enterprise Evaluation`
 
-Itu adalah Windows Server 2012 R2 Evaluation. Versi evaluation punya masa pakai
-terbatas dan tidak disarankan untuk produksi jangka panjang.
-
-Untuk ISO Windows Server 2012 R2 di atas, nama image yang benar adalah:
-
-```text
-Windows Server 2012 R2 SERVERDATACENTER
-```
+Versi evaluation punya masa pakai terbatas dan tidak disarankan untuk produksi
+jangka panjang. Kalau memakai ISO lain, pilih `Custom ISO / image name`, lalu
+isi nama image sesuai isi file WIM/ESD di ISO tersebut.

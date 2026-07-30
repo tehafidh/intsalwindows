@@ -5,6 +5,8 @@ const sshPassword = document.querySelector("#ssh-password");
 const sshLoginPort = document.querySelector("#ssh-login-port");
 const provider = document.querySelector("#provider");
 const mode = document.querySelector("#mode");
+const windowsPresetRow = document.querySelector("#windows-preset-row");
+const windowsPreset = document.querySelector("#windows-preset");
 const imageNameRow = document.querySelector("#image-name-row");
 const imageName = document.querySelector("#image-name");
 const imageUrl = document.querySelector("#image-url");
@@ -46,6 +48,38 @@ let rdpTargetValue = "";
 const waitingStatuses = new Set(["rebooting", "remote-progress", "windows-setup"]);
 const terminalStatuses = new Set(["rdp-ready", "failed", "remote-error", "timeout", "finished"]);
 const flowOrder = ["ssh", "installer", "web", "windows", "rdp"];
+const windowsPresets = {
+  server2012r2: {
+    imageName: "Windows Server 2012 R2 SERVERDATACENTER",
+    imageUrl:
+      "https://download.microsoft.com/download/6/2/A/62A76ABB-9990-4EFC-A4FE-C7D698DAEB96/9600.17050.WINBLUE_REFRESH.140317-1640_X64FRE_SERVER_EVAL_EN-US-IR3_SSS_X64FREE_EN-US_DV9.ISO",
+  },
+  server2016: {
+    imageName: "Windows Server 2016 SERVERDATACENTER",
+    imageUrl:
+      "https://software-static.download.prss.microsoft.com/pr/download/Windows_Server_2016_Datacenter_EVAL_en-us_14393_refresh.ISO",
+  },
+  server2019: {
+    imageName: "Windows Server 2019 SERVERDATACENTER",
+    imageUrl:
+      "https://software-static.download.prss.microsoft.com/dbazure/988969d5-f34g-4e03-ac9d-1f9786c66749/17763.3650.221105-1748.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso",
+  },
+  server2022: {
+    imageName: "Windows Server 2022 SERVERDATACENTER",
+    imageUrl:
+      "https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso",
+  },
+  server2025: {
+    imageName: "Windows Server 2025 SERVERDATACENTER",
+    imageUrl:
+      "https://software-static.download.prss.microsoft.com/dbazure/998969d5-f34g-4e03-ac9d-1f9786c66749/26100.32230.260111-0550.lt_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso",
+  },
+  windows11: {
+    imageName: "Windows 11 Enterprise Evaluation",
+    imageUrl:
+      "https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/26200.6584.250915-1905.25h2_ge_release_svc_refresh_CLIENTENTERPRISEEVAL_OEMRET_x64FRE_en-us.iso",
+  },
+};
 
 function isPort(input) {
   const value = Number(input.value);
@@ -118,7 +152,9 @@ function validate() {
 }
 
 function renderValidation() {
-  imageNameRow.hidden = mode.value === "dd";
+  const isDdMode = mode.value === "dd";
+  windowsPresetRow.hidden = isDdMode;
+  imageNameRow.hidden = isDdMode;
   manualProgressIp.value = manualProgressIp.value || host.value.trim();
   manualProgressPort.value = webPort.value;
 
@@ -132,6 +168,18 @@ function renderValidation() {
     validation.textContent = providerNotice();
     startButton.disabled = false;
   }
+}
+
+function applyWindowsPreset() {
+  const preset = windowsPresets[windowsPreset.value];
+  if (!preset) {
+    renderValidation();
+    return;
+  }
+  mode.value = "iso";
+  imageName.value = preset.imageName;
+  imageUrl.value = preset.imageUrl;
+  renderValidation();
 }
 
 function splitLogPrefix(message) {
@@ -543,10 +591,8 @@ document.querySelector("#load-example").addEventListener("click", () => {
   sshUsername.value = "root";
   sshLoginPort.value = "22";
   provider.value = "universal";
-  mode.value = "iso";
-  imageName.value = "Windows Server 2012 R2 SERVERDATACENTER";
-  imageUrl.value =
-    "https://download.microsoft.com/download/6/2/A/62A76ABB-9990-4EFC-A4FE-C7D698DAEB96/9600.17050.WINBLUE_REFRESH.140317-1640_X64FRE_SERVER_EVAL_EN-US-IR3_SSS_X64FREE_EN-US_DV9.ISO";
+  windowsPreset.value = "server2012r2";
+  applyWindowsPreset();
   rdpUsername.value = "administrator";
   rdpPassword.value = "ChangeMe!2026";
   rdpPort.value = "3390";
@@ -555,6 +601,16 @@ document.querySelector("#load-example").addEventListener("click", () => {
   allowPing.checked = true;
   autoReboot.checked = true;
   renderValidation();
+});
+
+windowsPreset.addEventListener("change", applyWindowsPreset);
+
+imageName.addEventListener("input", () => {
+  windowsPreset.value = "custom";
+});
+
+imageUrl.addEventListener("input", () => {
+  windowsPreset.value = "custom";
 });
 
 document.querySelector("#open-progress").addEventListener("click", () => {

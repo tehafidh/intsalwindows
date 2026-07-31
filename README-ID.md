@@ -31,8 +31,10 @@ menampilkan progress install secara live.
 Pastikan sudah ada Node.js versi 18 atau lebih baru.
 
 ```bash
-npm install
+npm install --production
 npm start
+npx pm2 save
+npx pm2 startup
 ```
 
 Buka:
@@ -48,14 +50,21 @@ Aplikasi sudah menyiapkan title, description, Open Graph, manifest,
 
 Saat deploy di aaPanel, isi domain publik agar sitemap memakai URL yang benar:
 
-```bash
-PUBLIC_SITE_URL="https://web.buyrdp.biz.id" npm start
-```
+`npm start` memakai PM2 dan default `PUBLIC_SITE_URL` sudah mengarah ke
+`https://web.buyrdp.biz.id`.
 
 Di aaPanel Node.js Project, masukkan environment variable:
 
 ```text
 PUBLIC_SITE_URL=https://web.buyrdp.biz.id
+```
+
+Perintah kontrol:
+
+```bash
+npm run restart
+npm run logs
+npm run stop
 ```
 
 ## Cara Pakai

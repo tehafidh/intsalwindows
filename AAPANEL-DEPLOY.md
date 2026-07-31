@@ -14,6 +14,7 @@ File yang wajib untuk menjalankan web:
 
 ```text
 server.js
+ecosystem.config.cjs
 package.json
 package-lock.json
 public/
@@ -41,6 +42,20 @@ http://127.0.0.1:8081
 ```
 
 Aktifkan WebSocket di reverse proxy.
+
+`npm start` menjalankan aplikasi memakai PM2 dengan nama proses
+`instaler-hafid-store`, jadi proses tetap hidup setelah terminal SSH ditutup.
+
+Perintah kontrol:
+
+```bash
+npm start
+npm run restart
+npm run logs
+npm run stop
+npx pm2 save
+npx pm2 startup
+```
 
 ## SEO
 

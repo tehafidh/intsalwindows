@@ -3253,12 +3253,30 @@ find_grub_extlinux_cfg() {
             -exec grep -E -l "$keyword" {} \;
     )
 
+    if [ -z "$cfgs" ]; then
+        error_and_exit "Find 0 $filename."
+    fi
+
     count="$(wc -l <<<"$cfgs")"
     if [ "$count" -eq 1 ]; then
         readlink -f "$cfgs" 2>/dev/null || echo "$cfgs"
     else
         error_and_exit "Find $count $filename."
     fi
+}
+
+get_extlinux_cfg() {
+    local cfg
+
+    if cfg=$(find_grub_extlinux_cfg /boot extlinux.conf LINUX 2>/dev/null) && [ -n "$cfg" ]; then
+        echo "$cfg"
+        return
+    fi
+
+    cfg=/boot/extlinux/extlinux.conf
+    mkdir -p "$(dirname "$cfg")"
+    touch "$cfg"
+    echo "$cfg"
 }
 
 prepare_extlinux_dir() {
@@ -4332,7 +4350,7 @@ init_bootloader_facts() {
                 fi
 
                 # extlinux
-                _extlinux_cfg=$(find_grub_extlinux_cfg /boot extlinux.conf LINUX)
+                _extlinux_cfg=$(get_extlinux_cfg)
                 target_cfg=$_extlinux_cfg
             fi
         fi
@@ -5028,6 +5046,9 @@ if is_need_boot_vmlinuz; then
     if is_use_local_extlinux; then
         info extlinux
         echo "$target_cfg"
+        if [ -z "$target_cfg" ]; then
+            error_and_exit "extlinux target config is empty."
+        fi
         extlinux_dir="$(dirname "$(readlink -f "$target_cfg" 2>/dev/null || echo "$target_cfg")")"
         prepare_extlinux_dir "$extlinux_dir"
 

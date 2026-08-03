@@ -473,6 +473,15 @@ find_xda() {
         error_and_exit "cmdline main_disk is empty."
     fi
 
+    if [[ "$main_disk" = dev_* ]]; then
+        xda=${main_disk#dev_}
+        if printf '%s\n' "$(get_all_disks)" | grep -Fxq "$xda"; then
+            set_config xda "$xda"
+            return
+        fi
+        error_and_exit "Could not find xda by device fallback: $xda"
+    fi
+
     # busybox fdisk/lsblk/blkid 不显示 mbr 分区表 id
     # 可用以下工具：
     # fdisk 在 util-linux-misc 里面，占用大

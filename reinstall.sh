@@ -2642,11 +2642,28 @@ find_main_disk() {
         # 获取 xda 的 id
         install_pkg fdisk
         main_disk=$(fdisk -l /dev/$xda | grep 'Disk identifier' | awk '{print $NF}' | sed 's/0x//')
+
+        # Some cloud images, including certain Linode Ubuntu images, may expose
+        # the root disk without a normal partition-table identifier. Try the
+        # other util-linux readers before falling back to the kernel disk name.
+        if [ -z "$main_disk" ] && is_have_cmd sfdisk; then
+            main_disk=$(sfdisk --disk-id /dev/$xda 2>/dev/null | sed 's/0x//' | grep .)
+        fi
+
+        if [ -z "$main_disk" ]; then
+            main_disk=$(lsblk --nodeps -rno PTUUID /dev/$xda 2>/dev/null | sed 's/0x//' | grep .)
+        fi
+
+        if [ -z "$main_disk" ] && [ -b "/dev/$xda" ]; then
+            info false "Disk identifier not found; using device name fallback: $xda"
+            main_disk="dev_$xda"
+        fi
     fi
 
     # 检查 id 格式是否正确
     if ! grep -Eix '[0-9a-f]{8}' <<<"$main_disk" &&
-        ! grep -Eix '[0-9a-f-]{36}' <<<"$main_disk"; then
+        ! grep -Eix '[0-9a-f-]{36}' <<<"$main_disk" &&
+        ! grep -Eix 'dev_[a-z0-9_]+' <<<"$main_disk"; then
         error_and_exit "Disk ID is invalid: $main_disk"
     fi
 }

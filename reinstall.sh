@@ -4309,16 +4309,18 @@ init_bootloader_facts() {
                 else
                     error_and_exit "grub not found"
                 fi
-            elif is_have_cmd extlinux; then
+            else
+                if ! is_have_cmd extlinux; then
+                    install_pkg extlinux
+                fi
+
+                if ! is_have_cmd extlinux; then
+                    error_and_exit "unsupported bootloader: extlinux not found."
+                fi
+
                 # extlinux
                 _extlinux_cfg=$(find_grub_extlinux_cfg /boot extlinux.conf LINUX)
                 target_cfg=$_extlinux_cfg
-            else
-                # Some BIOS cloud images expose an extlinux-style boot layout
-                # without shipping the extlinux binary. Use the standalone GRUB
-                # config path so installation can continue through external GRUB.
-                _grub_cfg=/boot/reinstall-grub.cfg
-                target_cfg=$_grub_cfg
             fi
         fi
     fi
@@ -4350,10 +4352,12 @@ recreate_grub_or_extlinux_cfg() {
         else
             $grub-mkconfig -o $target_cfg
         fi
-    elif is_have_cmd update-extlinux; then
-        # alpine 才有 update-extlinux
-        info "recreate extlinux.conf"
-        update-extlinux
+    elif is_use_local_extlinux; then
+        if is_have_cmd update-extlinux; then
+            # alpine 才有 update-extlinux
+            info "recreate extlinux.conf"
+            update-extlinux
+        fi
     else
         error_and_exit "unsupported bootloader."
     fi

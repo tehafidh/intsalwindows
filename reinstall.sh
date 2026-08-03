@@ -2358,7 +2358,7 @@ is_use_local_grub() {
 }
 
 is_use_local_extlinux() {
-    is_use_local_grub_extlinux && ! is_mbr_using_grub
+    is_use_local_grub_extlinux && ! is_mbr_using_grub && is_have_cmd extlinux
 }
 
 # 软 raid 时 xda 可能不是引导盘，以后再修正
@@ -4309,10 +4309,16 @@ init_bootloader_facts() {
                 else
                     error_and_exit "grub not found"
                 fi
-            else
+            elif is_have_cmd extlinux; then
                 # extlinux
                 _extlinux_cfg=$(find_grub_extlinux_cfg /boot extlinux.conf LINUX)
                 target_cfg=$_extlinux_cfg
+            else
+                # Some BIOS cloud images expose an extlinux-style boot layout
+                # without shipping the extlinux binary. Use the standalone GRUB
+                # config path so installation can continue through external GRUB.
+                _grub_cfg=/boot/reinstall-grub.cfg
+                target_cfg=$_grub_cfg
             fi
         fi
     fi

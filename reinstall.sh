@@ -3255,10 +3255,21 @@ find_grub_extlinux_cfg() {
 
     count="$(wc -l <<<"$cfgs")"
     if [ "$count" -eq 1 ]; then
-        echo "$cfgs"
+        readlink -f "$cfgs" 2>/dev/null || echo "$cfgs"
     else
         error_and_exit "Find $count $filename."
     fi
+}
+
+prepare_extlinux_dir() {
+    local extlinux_dir=$1
+
+    if [ -f "$extlinux_dir/extlinux.sys" ] || [ -f "$extlinux_dir/ldlinux.sys" ]; then
+        return
+    fi
+
+    info false "Installing extlinux boot files in $extlinux_dir"
+    extlinux --install "$extlinux_dir"
 }
 
 # 空格、&、用户输入的网址要加引号，否则 grub 无法正确识别
@@ -4422,7 +4433,9 @@ remove_exist_reinstall() {
             if is_use_local_grub; then
                 $grub-editenv - unset next_entry
             elif is_use_local_extlinux; then
-                extlinux --clear-once "$(dirname "$target_cfg")"
+                extlinux_dir="$(dirname "$(readlink -f "$target_cfg" 2>/dev/null || echo "$target_cfg")")"
+                prepare_extlinux_dir "$extlinux_dir"
+                extlinux --clear-once "$extlinux_dir" || warn false "Could not clear extlinux once entry; continuing."
             fi
 
             # 重新创建 grub.cfg / extlinux.conf
@@ -5015,7 +5028,8 @@ if is_need_boot_vmlinuz; then
     if is_use_local_extlinux; then
         info extlinux
         echo "$target_cfg"
-        extlinux_dir="$(dirname "$target_cfg")"
+        extlinux_dir="$(dirname "$(readlink -f "$target_cfg" 2>/dev/null || echo "$target_cfg")")"
+        prepare_extlinux_dir "$extlinux_dir"
 
         # 不起作用
         # 好像跟 extlinux --once 有冲突

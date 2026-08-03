@@ -17,7 +17,6 @@ const defaultReinstallBase =
 const upstreamCnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
 const rawBase = process.env.REINSTALL_BASE_URL || defaultReinstallBase;
 const cnBase = process.env.REINSTALL_CN_BASE_URL || upstreamCnBase;
-const reinstallFetchTag = process.env.REINSTALL_FETCH_TAG || "20260803-linode-extlinux";
 const siteName = "Instaler Haf.id Store";
 const defaultPublicSiteUrl = "https://web.buyrdp.biz.id";
 const publicSiteUrl = String(process.env.PUBLIC_SITE_URL || defaultPublicSiteUrl).replace(/\/+$/, "");
@@ -72,6 +71,9 @@ function withCacheBuster(url) {
     if (!/^https?:\/\//i.test(url)) {
         return url;
     }
+    const reinstallFetchTag =
+        process.env.REINSTALL_FETCH_TAG ||
+        `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
     const separator = url.includes("?") ? "&" : "?";
     return `${url}${separator}cb=${encodeURIComponent(reinstallFetchTag)}`;
 }
@@ -415,6 +417,7 @@ function buildRemoteCommand(config) {
         `echo ${bashQuote(`Installer source: ${reinstallUrl}`)}`,
         `curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -o reinstall.sh ${bashQuote(reinstallUrl)} || wget -O reinstall.sh ${bashQuote(reinstallUrl)}`,
         "grep '^SCRIPT_VERSION=' reinstall.sh || true",
+        "grep -q 'prepare_extlinux_dir' reinstall.sh && echo 'Installer patch: extlinux bootfiles ready' || echo 'Installer patch: old extlinux script'",
         "chmod +x reinstall.sh",
         `bash reinstall.sh ${args.join(" ")}`,
     ];

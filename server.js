@@ -17,6 +17,7 @@ const defaultReinstallBase =
 const upstreamCnBase = "https://cnb.cool/bin456789/reinstall/-/git/raw/main";
 const rawBase = process.env.REINSTALL_BASE_URL || defaultReinstallBase;
 const cnBase = process.env.REINSTALL_CN_BASE_URL || upstreamCnBase;
+const reinstallFetchTag = process.env.REINSTALL_FETCH_TAG || "20260803-linode-extlinux";
 const siteName = "Instaler Haf.id Store";
 const defaultPublicSiteUrl = "https://web.buyrdp.biz.id";
 const publicSiteUrl = String(process.env.PUBLIC_SITE_URL || defaultPublicSiteUrl).replace(/\/+$/, "");
@@ -65,6 +66,14 @@ app.get("/sitemap.xml", (req, res) => {
 
 function bashQuote(value) {
     return `'${String(value).replaceAll("'", "'\"'\"'")}'`;
+}
+
+function withCacheBuster(url) {
+    if (!/^https?:\/\//i.test(url)) {
+        return url;
+    }
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}cb=${encodeURIComponent(reinstallFetchTag)}`;
 }
 
 function isPort(value) {
@@ -378,6 +387,7 @@ function normalizeWindowsImageName(value) {
 
 function buildRemoteCommand(config) {
     const base = config.cnMirror ? cnBase : rawBase;
+    const reinstallUrl = withCacheBuster(`${base}/reinstall.sh`);
     const args = [];
 
     if (config.mode === "dd") {
@@ -402,7 +412,9 @@ function buildRemoteCommand(config) {
         "set -e",
         "cd /root",
         `export RDP_PASSWORD=${bashQuote(config.rdpPassword)}`,
-        `curl -fsSLO ${bashQuote(`${base}/reinstall.sh`)} || wget -O reinstall.sh ${bashQuote(`${base}/reinstall.sh`)}`,
+        `echo ${bashQuote(`Installer source: ${reinstallUrl}`)}`,
+        `curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -o reinstall.sh ${bashQuote(reinstallUrl)} || wget -O reinstall.sh ${bashQuote(reinstallUrl)}`,
+        "grep '^SCRIPT_VERSION=' reinstall.sh || true",
         "chmod +x reinstall.sh",
         `bash reinstall.sh ${args.join(" ")}`,
     ];

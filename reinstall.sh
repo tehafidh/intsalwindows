@@ -4216,7 +4216,7 @@ init_basearch() {
 init_confhome() {
     # 设置 confhome
     # 未测试
-    if false && [[ "$confhome" = http*://raw.githubusercontent.com/* ]]; then
+    if [[ "$confhome" = http*://raw.githubusercontent.com/* ]] && is_have_cmd curl; then
         repo=$(echo $confhome | cut -d/ -f4,5)
         branch=$(echo $confhome | cut -d/ -f6)
         # 避免脚本更新时，文件不同步造成错误
@@ -4225,7 +4225,9 @@ init_confhome() {
                 grep '"sha"' | grep -Eo '[0-9a-f]{40}')
         fi
         # shellcheck disable=SC2001
-        confhome=$(echo "$confhome" | sed "s/main$/$commit/")
+        if [ -n "$commit" ]; then
+            confhome=$(echo "$confhome" | sed "s/main$/$commit/")
+        fi
     fi
 
     # 设置国内代理
